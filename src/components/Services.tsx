@@ -9,8 +9,8 @@ const services = [
     body: 'Shop purchase options and use the home purchase qualifier to see what you qualify for.',
     action: 'Start a purchase',
     video: '/media/purchase.mp4',
-    focus: 'center 42%',
-    alt: 'A suburban house with a front yard and a white garage door',
+    focus: 'center',
+    alt: 'A modern house with a garden, glass balcony, and palm trees',
   },
   {
     href: '/refinance',
@@ -19,8 +19,8 @@ const services = [
     body: 'Check whether a refinance fits, then review the numbers with the refinance rate checker.',
     action: 'Check refinance',
     video: '/media/refinance.mp4',
-    focus: '68% 70%',
-    alt: 'A living room with a gray sofa and a round table',
+    focus: 'center',
+    alt: 'A bright open living room with wood floors and a staircase',
   },
   {
     href: '/loans',
