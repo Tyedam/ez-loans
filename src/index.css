@@ -43,6 +43,27 @@ body {
   to { transform: translateX(-50%); }
 }
 
+/* Taller than the card so scroll can slide the photo without showing an edge. */
+.scroll-photo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 130%;
+  max-width: none;
+  object-fit: cover;
+  transform: translate3d(0, -8%, 0) scale(1.08);
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-photo {
+    top: 0;
+    height: 100%;
+    transform: none;
+  }
+}
+
 .liquid-glass::before {
   content: '';
   position: absolute;

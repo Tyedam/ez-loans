@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
 const services = [
@@ -33,6 +34,43 @@ const services = [
   },
 ] as const
 
+function ScrollPhoto({ src, alt, reverse = false }: { src: string; alt: string; reverse?: boolean }) {
+  const ref = useRef<HTMLImageElement>(null)
+
+  useEffect(() => {
+    const image = ref.current
+    const card = image?.closest('a')
+    if (!image || !card) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const rect = card.getBoundingClientRect()
+      const progress = (window.innerHeight - rect.top) / (window.innerHeight + rect.height)
+      const clamped = Math.min(1, Math.max(0, progress))
+      const travel = reverse ? clamped : 1 - clamped
+      const scale = 1.05 + clamped * 0.08
+      image.style.transform = `translate3d(0, ${travel * -16}%, 0) scale(${scale})`
+    }
+    const onScroll = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(update)
+    }
+
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
+  }, [reverse])
+
+  return <img ref={ref} src={src} alt={alt} className="scroll-photo" />
+}
+
 export function Services() {
   return (
     <section id="services" className="bg-black px-6 py-24 text-white md:px-12 lg:px-16">
@@ -52,10 +90,10 @@ export function Services() {
             to={service.href}
             className="group relative flex min-h-[420px] flex-col justify-end overflow-hidden rounded-[40px] border border-white/10 p-8"
           >
-            <img
+            <ScrollPhoto
               src={service.image}
               alt={service.alt}
-              className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+              reverse={service.href === '/refinance'}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
             <div className="relative">
