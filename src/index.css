@@ -43,16 +43,16 @@ body {
   to { transform: translateX(-50%); }
 }
 
-/* Taller than the card so scroll can slide the photo without showing an edge. */
+/* Scaled up so a small scroll shift stays inside the card. */
 .scroll-photo {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
-  height: 130%;
-  max-width: none;
+  height: 100%;
   object-fit: cover;
-  transform: translate3d(0, -8%, 0) scale(1.08);
+  pointer-events: none;
+  transform: scale(1.14);
+  transform-origin: center center;
   will-change: transform;
 }
 

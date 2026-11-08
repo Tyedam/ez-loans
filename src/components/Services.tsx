@@ -8,9 +8,9 @@ const services = [
     title: 'Buy a home',
     body: 'Shop purchase options and use the home purchase qualifier to see what you qualify for.',
     action: 'Start a purchase',
-    image:
-      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=900&q=70',
-    alt: 'A modern house with a lawn and warm exterior lighting',
+    video: '/media/purchase.mp4',
+    focus: 'center 42%',
+    alt: 'A suburban house with a front yard and a white garage door',
   },
   {
     href: '/refinance',
@@ -18,9 +18,9 @@ const services = [
     title: 'Refinance your mortgage',
     body: 'Check whether a refinance fits, then review the numbers with the refinance rate checker.',
     action: 'Check refinance',
-    image:
-      'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=70',
-    alt: 'A house key and a small model home on a table',
+    video: '/media/refinance.mp4',
+    focus: '68% 70%',
+    alt: 'A living room with a gray sofa and a round table',
   },
   {
     href: '/loans',
@@ -28,20 +28,30 @@ const services = [
     title: 'Fixed, ARM, FHA, and VA',
     body: '30-year fixed, 15-year fixed, adjustable-rate, FHA, and VA loans.',
     action: 'See loan options',
-    image:
-      'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=900&q=70',
-    alt: 'A light-colored suburban house with a front porch',
+    video: '/media/loans.mp4',
+    focus: 'center 68%',
+    alt: 'A modern house with a patio and glass doors',
   },
 ] as const
 
-function ScrollPhoto({ src, alt, reverse = false }: { src: string; alt: string; reverse?: boolean }) {
-  const ref = useRef<HTMLImageElement>(null)
+function ScrollClip({
+  src,
+  label,
+  focus,
+  reverse = false,
+}: {
+  src: string
+  label: string
+  focus: string
+  reverse?: boolean
+}) {
+  const ref = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    const image = ref.current
-    const card = image?.closest('a')
-    if (!image || !card) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const video = ref.current
+    const card = video?.closest('a')
+    if (!video || !card) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     let frame = 0
     const update = () => {
@@ -49,9 +59,23 @@ function ScrollPhoto({ src, alt, reverse = false }: { src: string; alt: string; 
       const rect = card.getBoundingClientRect()
       const progress = (window.innerHeight - rect.top) / (window.innerHeight + rect.height)
       const clamped = Math.min(1, Math.max(0, progress))
+      const visible = rect.bottom > 80 && rect.top < window.innerHeight - 80
+
+      if (reduce) {
+        video.pause()
+        return
+      }
+
+      if (visible) {
+        if (video.paused) void video.play().catch(() => undefined)
+      } else if (!video.paused) {
+        video.pause()
+      }
+
       const travel = reverse ? clamped : 1 - clamped
-      const scale = 1.05 + clamped * 0.08
-      image.style.transform = `translate3d(0, ${travel * -16}%, 0) scale(${scale})`
+      const scale = 1.12 + clamped * 0.08
+      const shift = (travel - 0.5) * -5
+      video.style.transform = `translate3d(0, ${shift}%, 0) scale(${scale})`
     }
     const onScroll = () => {
       if (frame) return
@@ -68,7 +92,19 @@ function ScrollPhoto({ src, alt, reverse = false }: { src: string; alt: string; 
     }
   }, [reverse])
 
-  return <img ref={ref} src={src} alt={alt} className="scroll-photo" />
+  return (
+    <video
+      ref={ref}
+      className="scroll-photo"
+      style={{ objectPosition: focus }}
+      src={src}
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      aria-label={label}
+    />
+  )
 }
 
 export function Services() {
@@ -90,9 +126,10 @@ export function Services() {
             to={service.href}
             className="group relative flex min-h-[420px] flex-col justify-end overflow-hidden rounded-[40px] border border-white/10 p-8"
           >
-            <ScrollPhoto
-              src={service.image}
-              alt={service.alt}
+            <ScrollClip
+              src={service.video}
+              label={service.alt}
+              focus={service.focus}
               reverse={service.href === '/refinance'}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
