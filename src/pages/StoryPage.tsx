@@ -17,6 +17,7 @@ type Story = {
   eyebrow: string
   title: string
   lede: string
+  media?: string
   sections: Section[]
   primary?: Action
   secondary?: Action
@@ -29,6 +30,7 @@ export const stories = {
     eyebrow: 'Purchase',
     title: 'Find out how much home you can afford.',
     lede: 'Know what you can afford before you start searching. A purchase qualifier is free.',
+    media: '/media/purchase.mp4',
     sections: [
       {
         heading: 'How a purchase loan works here',
@@ -53,6 +55,7 @@ export const stories = {
     eyebrow: 'Refinance',
     title: 'See whether a refinance fits.',
     lede: 'A refinance checker is free. It shows whether a new loan could change your rate or payment.',
+    media: '/media/refinance.mp4',
     sections: [
       {
         heading: 'How a refinance works here',
@@ -140,6 +143,7 @@ export const stories = {
     eyebrow: 'Loan options',
     title: 'Five ways to finance a home.',
     lede: '30-year fixed, 15-year fixed, adjustable-rate, FHA, and VA. A free quote shows which ones fit.',
+    media: '/media/loans.mp4',
     sections: [
       {
         heading: 'Pick a program to read',
@@ -260,30 +264,46 @@ export function StoryView({ story, extra }: { story: Story; extra?: ReactNode })
       eyebrow={story.eyebrow}
       title={story.title}
       lede={story.lede}
+      media={story.media}
       primary={story.primary}
       secondary={story.secondary}
     >
-      <div className="grid gap-12 lg:grid-cols-[1.4fr_0.6fr]">
-        <div className="space-y-10">
-          {story.sections.map((section) => (
-            <section key={section.heading}>
-              <h2 className="text-2xl font-semibold tracking-tight">{section.heading}</h2>
-              <div className="mt-4 space-y-4 text-base leading-relaxed text-neutral-700">
-                {section.paragraphs.map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
-                ))}
-              </div>
-            </section>
-          ))}
+      <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,1.4fr)_minmax(240px,0.6fr)]">
+        <div className="space-y-12">
+          {story.sections.map((section) =>
+            section.heading === 'The steps' ? (
+              <section key={section.heading}>
+                <h2 className="text-2xl font-semibold tracking-tight">{section.heading}</h2>
+                <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+                  {section.paragraphs.map((paragraph, index) => (
+                    <li key={paragraph} className="rounded-2xl border border-black/10 p-5">
+                      <span className="text-sm font-semibold text-brand">{String(index + 1).padStart(2, '0')}</span>
+                      <p className="mt-3 text-sm leading-relaxed text-neutral-800">{paragraph}</p>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            ) : (
+              <section key={section.heading}>
+                <h2 className="text-2xl font-semibold tracking-tight">{section.heading}</h2>
+                <div className="mt-4 max-w-2xl space-y-4 text-base leading-relaxed text-neutral-700">
+                  {section.paragraphs.map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                </div>
+              </section>
+            ),
+          )}
           {extra}
         </div>
-        <aside className="h-fit rounded-[28px] bg-neutral-100 p-6">
+        <aside className="h-fit rounded-[28px] bg-black p-6 text-white">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Loan options</p>
-          <ul className="mt-4 space-y-3">
+          <ul className="mt-2">
             {loanLinks.map((link) => (
-              <li key={link.href}>
-                <Link to={link.href} className="font-medium hover:text-brand">
+              <li key={link.href} className="border-b border-white/10 last:border-b-0">
+                <Link to={link.href} className="flex items-center justify-between py-3.5 text-sm font-medium hover:text-brand">
                   {link.label}
+                  <span aria-hidden="true">→</span>
                 </Link>
               </li>
             ))}
