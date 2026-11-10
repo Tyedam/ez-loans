@@ -14,7 +14,7 @@ export function Hero() {
   return (
     <section id="top" className="relative h-screen min-h-[620px] overflow-hidden bg-black text-white">
       <video
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full object-cover object-center"
         src={HERO_VIDEO}
         autoPlay
         loop
@@ -23,9 +23,9 @@ export function Hero() {
         preload="auto"
         aria-hidden="true"
       />
-      {/* Only the bottom of the frame is shaded, so the headline reads and the skyline stays clear. */}
+      {/* A short fade under the type only, so the towers and the river stay visible. */}
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 via-black/25 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/50 via-black/10 to-transparent"
         aria-hidden="true"
       />
 
@@ -36,17 +36,18 @@ export function Hero() {
 
         <div className="mt-auto px-6 pb-7 md:px-12 lg:px-16 lg:pb-9">
           <div className="grid gap-7 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:items-end lg:gap-16">
-            <div>
+            <div className="hero-copy">
+              <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-white/80">Metro Detroit</p>
               <AnimatedHeading lines={headline} />
               <FadeIn delay={800} duration={1000}>
-                <p className="mt-5 max-w-md text-sm leading-relaxed text-white/80 md:text-base">
+                <p className="mt-5 max-w-md text-sm leading-relaxed text-white/90 md:text-base">
                   Use one of our quick and easy tools to find out what you qualify for.
                 </p>
               </FadeIn>
             </div>
 
             <FadeIn delay={1200} duration={1000}>
-              <p className="hidden max-w-sm text-sm leading-relaxed text-white/80 lg:block">{site.mission}</p>
+              <p className="hidden max-w-sm text-sm leading-relaxed text-white/90 lg:block">{site.mission}</p>
               <div className="flex flex-wrap gap-3 lg:mt-6">
                 <a
                   href={site.purchaseQualifier}
@@ -65,7 +66,7 @@ export function Hero() {
           </div>
 
           <FadeIn delay={1400} duration={1000}>
-            <div className="mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-2 border-t border-white/25 pt-4 text-xs text-white/75">
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-2 border-t border-white/25 pt-4 text-xs text-white/85">
               <p>
                 {site.nmls} <span className="mx-2 text-white/40">/</span> {site.licensedIn}
               </p>
