@@ -2,21 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { Link } from 'react-router-dom'
 import { Hero, HERO_VIDEO } from './Hero'
 import { SiteLink } from './SiteLink'
-import {
-  boundsOf,
-  doorRect,
-  ease,
-  openingPoints,
-  lerp,
-  risingHousePoints,
-  roundedPath,
-  span,
-  towersPath,
-  waterlineY,
-  type HouseBox,
-  type Point,
-  type Tower,
-} from './skylineMotion'
+import { ease, lerp, span, towersPath, waterlineY, type Tower } from './skylineMotion'
 import { loanLinks, site, toolLinks } from '../site'
 
 type Beat = 'purchase' | 'refinance' | 'loans' | 'tools'
@@ -41,32 +27,41 @@ const CLIPS = {
  * Each pair is where a movement starts and where it has settled.
  */
 const AT = {
-  heroOut: [0.1, 0.8],
-  house: [0.4, 1.5],
-  purchaseClip: [0.9, 1.45],
-  tide: [2.15, 3.2],
-  split: [3.7, 4.6],
-  towerLabels: [4.25, 4.6],
-  towerLabelsOut: [5.25, 5.45],
-  sink: [5.3, 5.75],
-  lightsOn: [5.65, 5.87],
-  lightsOpen: [5.91, 6.25],
+  heroOut: [0.1, 0.75],
+  dive: [0.28, 1.35],
+  house: [1.12, 2.0],
+  tide: [2.45, 3.6],
+  split: [4.1, 5.0],
+  towerLabels: [4.65, 5.0],
+  towerLabelsOut: [5.65, 5.85],
+  sink: [5.7, 6.15],
+  lightsOn: [6.05, 6.27],
+  lightsOpen: [6.31, 6.65],
   railIn: [0.6, 1],
 } as const satisfies Record<string, readonly [number, number]>
 
-const END = 6.85
+const END = 7.25
 
 /** Where each beat sits still. Reduced motion and short screens show these and nothing in between. */
-const SETTLED: Record<Beat, number> = { purchase: 1.9, refinance: 3.45, loans: 5, tools: 6.65 }
+const SETTLED: Record<Beat, number> = { purchase: 2.2, refinance: 3.85, loans: 5.4, tools: 7.05 }
+
+/**
+ * The garage on the full-frame purchase clip. The room opens here.
+ * Fractions of the stage, tuned to object-position center 52%.
+ */
+const GARAGE = { left: 0.05, top: 0.38, right: 0.43, bottom: 0.63 }
+
+/** A still of the purchase clip with the garage doors in frame, so the doorway stays put. */
+const HOUSE_FRAME = 0.4
 
 /** Fade in from, fade in to, fade out from, fade out to. */
 type Cue = readonly [number, number, number, number]
 
 const COPY_CUES: Record<Beat, Cue> = {
-  purchase: [1.15, 1.6, 2.15, 2.4],
-  refinance: [2.85, 3.25, 3.7, 3.95],
-  loans: [4.15, 4.55, 5.25, 5.5],
-  tools: [5.6, 5.95, END, END + 1],
+  purchase: [1.7, 2.08, 2.18, 2.42],
+  refinance: [3.25, 3.65, 4.1, 4.35],
+  loans: [4.55, 4.95, 5.65, 5.9],
+  tools: [6.0, 6.35, END, END + 1],
 }
 
 /** The blocks rise at different times, the way this skyline is taller on the left and broken up on the right. */
@@ -88,8 +83,8 @@ type Layout = {
   w: number
   h: number
   river: number
-  band: number
-  house: HouseBox
+  streetX: number
+  streetY: number
   towers: Tower[]
   pills: { cx: number; cy: number; w: number; h: number }[]
 }
@@ -110,6 +105,12 @@ function showStill(video: HTMLVideoElement) {
   }
   if (video.readyState >= 1) seek()
   else video.addEventListener('loadedmetadata', seek, { once: true })
+}
+
+function holdFrame(video: HTMLVideoElement | null) {
+  if (!video) return
+  if (video.readyState >= 1 && Math.abs(video.currentTime - HOUSE_FRAME) > 0.07) video.currentTime = HOUSE_FRAME
+  if (!video.paused) video.pause()
 }
 
 /** Hides a layer outright. Shown layers inherit, so a hidden parent still hides them. */
@@ -173,7 +174,6 @@ function Stage({ beat, children }: StageProps) {
   const tideRef = useRef<HTMLDivElement>(null)
   const refinanceVideoRef = useRef<HTMLVideoElement>(null)
   const loansVideoRef = useRef<HTMLVideoElement>(null)
-  const outlineRef = useRef<SVGSVGElement>(null)
   const railRef = useRef<HTMLElement>(null)
   const gridRef = useRef<HTMLUListElement>(null)
   const copyRefs = useRef<Partial<Record<Beat, HTMLDivElement | null>>>({})
@@ -192,8 +192,6 @@ function Stage({ beat, children }: StageProps) {
     const skyline = skylineRef.current
     const house = houseRef.current
     const tideLayer = tideRef.current
-    const outline = outlineRef.current
-    const outlinePaths = outline ? Array.from(outline.querySelectorAll('path')) : []
     const rail = railRef.current
     const ticks = rail ? Array.from(rail.querySelectorAll('button')) : []
     const grid = gridRef.current
@@ -208,11 +206,9 @@ function Stage({ beat, children }: StageProps) {
       const h = stage.clientHeight
       const wide = w >= 1024
       const river = waterlineY(w, h)
-
-      // One building in the lower right, feet on the streets just above the water. Centered on a narrow screen.
-      const band = Math.min(Math.max(river, h * 0.72), h * 0.9)
-      const size = wide ? Math.min(h * 0.48, w * 0.32) : Math.min(h * 0.34, w * 0.72)
-      const houseBox = { left: w * (wide ? 0.68 : 0.5) - size / 2, top: band - h * 0.03 - size, size }
+      // The lit streets sit just above the water. The dive is headed there.
+      const streetY = Math.min(Math.max(river - h * 0.04, h * 0.64), h * 0.8)
+      const streetX = w * (wide ? 0.48 : 0.5)
 
       const margin = wide ? 64 : w >= 768 ? 48 : 16
       const gap = Math.min(22, Math.max(6, w * 0.014))
@@ -248,7 +244,7 @@ function Stage({ beat, children }: StageProps) {
         })
       }
 
-      return { w, h, river, band, house: houseBox, towers, pills }
+      return { w, h, river, streetX, streetY, towers, pills }
     }
 
     let layout = measure()
@@ -256,33 +252,29 @@ function Stage({ beat, children }: StageProps) {
 
     /** Draws the story at scroll position x (in screens). */
     const paint = (x: number) => {
-      const { w, h, river } = layout
-      const morph = ease(span(x, ...AT.house))
+      const { w, h, river, streetX, streetY } = layout
+      const dive = ease(span(x, ...AT.dive))
+      const arrive = ease(span(x, ...AT.house))
       const tide = span(x, ...AT.tide)
       const split = span(x, ...AT.split)
       const sink = ease(span(x, ...AT.sink))
+      const houseStands = arrive > 0.02 && tide < 0.98
 
-      // Opening: the hero copy drifts up off the skyline, which stays full frame.
+      // Opening: the hero copy drifts up, then the shot drops into the street.
       if (hero) {
         const out = ease(span(x, ...AT.heroOut))
         fade(hero, 1 - out)
         hero.style.setProperty('--hero-shift', `${(-Math.min(x, AT.heroOut[1]) * h * 0.7).toFixed(1)}px`)
       }
 
-      // Beat 1: one tower folds into a house. The rest of the downtown clip stays up.
-      const corners = risingHousePoints(layout.house, morph)
-      const radius = Math.max(10, morph * layout.house.size * 0.04)
-      const houseStands = morph > 0 && tide < 0.96
-      // The exterior leaves as the room fills the doorway, so the two pictures do not stack.
-      const entered = ease(span(tide, 0, 0.28))
-      const shape = houseStands ? roundedPath(corners, radius) : ''
-      const entering = tide > 0 && tide < 1
-      const step = ease(tide)
-      const within = ease(span(step, 0, 0.38))
-      const beyond = ease(span(step, 0.34, 1))
-      const open = entering ? openingPoints(w, h, layout.house, within, beyond) : []
-      const openPath = entering ? roundedPath(open, layout.house.size * 0.035 * (1 - beyond)) : ''
-
+      const release = ease(span(tide, 0.45, 1))
+      const zoom = lerp(lerp(1, 3.6, dive), 1, release)
+      const lift = (h * 0.5 - streetY) * dive * (1 - release)
+      if (skylineVideo) {
+        skylineVideo.style.transformOrigin = `${streetX.toFixed(1)}px ${streetY.toFixed(1)}px`
+        skylineVideo.style.transform =
+          zoom === 1 && lift === 0 ? '' : `translate3d(0, ${lift.toFixed(1)}px, 0) scale(${zoom.toFixed(3)})`
+      }
       if (skyline) {
         // Hide the city only while the room fills the screen. It comes back between the loan towers.
         const covered = tide >= 1 && split <= 0
@@ -291,49 +283,49 @@ function Stage({ beat, children }: StageProps) {
       }
 
       if (glow) {
-        const center = boundsOf(corners)
-        glow.style.opacity = (morph * (1 - ease(span(tide, 0.2, 0.8)))).toFixed(3)
-        glow.style.setProperty('--glow-x', `${(center.left + center.width / 2).toFixed(0)}px`)
-        glow.style.setProperty('--glow-y', `${(center.top + center.height / 2).toFixed(0)}px`)
+        const lit = dive * (1 - ease(span(arrive, 0.15, 0.8))) * (1 - ease(tide))
+        glow.style.opacity = lit.toFixed(3)
+        glow.style.setProperty('--glow-x', `${streetX.toFixed(0)}px`)
+        glow.style.setProperty('--glow-y', `${streetY.toFixed(0)}px`)
       }
 
-      if (outline) {
-        // The stroke stays on the house until the room reaches it, then follows the room out to the frame.
-        const followRoom = within > 0.9 && openPath !== ''
-        const shown = (morph > 0.02 && tide < 0.96 && !followRoom) || (followRoom && beyond < 0.92)
-        outline.style.opacity = shown ? (1 - ease(span(beyond, 0.45, 0.92))).toFixed(3) : '0'
-        const d = followRoom ? openPath : shape
-        if (shown && d) outlinePaths.forEach((path) => path.setAttribute('d', d))
-      }
-
+      // The house photo comes up the street you just entered, until it is the whole view.
+      const houseFade = ease(span(tide, 0.7, 0.96))
       if (house) {
-        const inside = ease(span(x, ...AT.purchaseClip))
-        const shown = inside > 0 && houseStands && shape !== ''
+        const shown = houseStands
         setVisible(house, shown)
         if (shown) {
-          // The clip is fitted to this building so the home stays framed as the roof folds in.
-          const box = boundsOf(corners)
-          const local = corners.map(([px, py]): Point => [px - box.left, py - box.top])
-          house.style.left = `${box.left.toFixed(1)}px`
-          house.style.top = `${box.top.toFixed(1)}px`
-          house.style.width = `${box.width.toFixed(1)}px`
-          house.style.height = `${box.height.toFixed(1)}px`
-          house.style.clipPath = `path("${roundedPath(local, radius)}")`
-          house.style.opacity = (inside * (1 - entered)).toFixed(3)
+          const scale = lerp(0.07, 1, arrive)
+          house.style.opacity = (ease(span(arrive, 0, 0.22)) * (1 - houseFade)).toFixed(3)
+          house.style.transformOrigin = `${streetX.toFixed(1)}px ${streetY.toFixed(1)}px`
+          house.style.transform = scale >= 0.995 ? '' : `scale(${scale.toFixed(3)})`
+          house.style.borderRadius = `${lerp(18, 0, arrive).toFixed(1)}px`
+          house.style.boxShadow =
+            arrive < 0.94 ? '0 0 0 1.5px rgba(255,255,255,0.9), 0 24px 60px rgba(0,0,0,0.55)' : 'none'
         }
       }
 
-      // Beat 2: the interior opens in the doorway and grows until you are standing in the room.
+      // Beat 2: the garage opens and the room grows until you are standing inside.
       // Beat 3: that frame splits into five downtown blocks, which later drop back into the city.
       const loansIn = ease(span(split, 0.2, 0.75))
-      const door = doorRect(layout.house)
+      const door = {
+        left: GARAGE.left * w,
+        top: GARAGE.top * h,
+        right: GARAGE.right * w,
+        bottom: GARAGE.bottom * h,
+      }
       if (tideLayer) {
         const shown = tide > 0 && sink < 1
         setVisible(tideLayer, shown)
         if (shown && tide < 1) {
-          // First the room fills the doorway, then the whole house, then the frame.
-          tideLayer.style.clipPath = `path("${openPath}")`
-          tideLayer.style.opacity = ease(span(tide, 0, 0.08)).toFixed(3)
+          const clipT = ease(span(tide, 0.04, 0.94))
+          const top = lerp(door.top, 0, clipT)
+          const right = lerp(w - door.right, 0, clipT)
+          const bottom = lerp(h - door.bottom, 0, clipT)
+          const left = lerp(door.left, 0, clipT)
+          const round = lerp(10, 0, clipT)
+          tideLayer.style.clipPath = `inset(${top.toFixed(1)}px ${right.toFixed(1)}px ${bottom.toFixed(1)}px ${left.toFixed(1)}px round ${round.toFixed(1)}px)`
+          tideLayer.style.opacity = ease(span(tide, 0, 0.02)).toFixed(3)
         } else if (shown && split <= 0) {
           tideLayer.style.clipPath = 'none'
           tideLayer.style.opacity = '1'
@@ -427,7 +419,8 @@ function Stage({ beat, children }: StageProps) {
       if (!beat) {
         // Clips start a little before they are seen so the first frame is ready.
         setPlaying(skylineVideo, true)
-        setPlaying(purchaseVideo, x > AT.house[0] && houseStands)
+        if (houseStands) holdFrame(purchaseVideo)
+        else if (purchaseVideo && !purchaseVideo.paused) purchaseVideo.pause()
         setPlaying(refinanceVideo, x > SETTLED.purchase - 0.2 && loansIn < 1)
         setPlaying(loansVideo, x > SETTLED.refinance - 0.15 && sink < 1)
       }
@@ -447,7 +440,10 @@ function Stage({ beat, children }: StageProps) {
       resize.observe(stage)
       const watch = new IntersectionObserver((entries) => {
         const onScreen = entries.some((entry) => entry.isIntersecting)
-        videos.forEach((video) => setPlaying(video, onScreen && !still))
+        videos.forEach((video) => {
+          if (video === purchaseVideo) holdFrame(video)
+          else setPlaying(video, onScreen && !still)
+        })
       })
       watch.observe(stage)
       return () => {
@@ -557,14 +553,14 @@ function Stage({ beat, children }: StageProps) {
       {has('purchase') ? (
         <div
           ref={houseRef}
-          className="pointer-events-none absolute overflow-hidden"
+          className="pointer-events-none absolute inset-0 overflow-hidden"
           role="img"
           aria-label="A two-story house with a gabled roof, seen from the front"
         >
           <video
             ref={purchaseVideoRef}
             className={VIDEO}
-            style={{ objectPosition: 'center 34%' }}
+            style={{ objectPosition: 'center 52%' }}
             src={CLIPS.purchase}
             loop
             muted
@@ -573,13 +569,6 @@ function Stage({ beat, children }: StageProps) {
             aria-hidden="true"
           />
         </div>
-      ) : null}
-
-      {has('purchase') ? (
-        <svg ref={outlineRef} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
-          <path fill="none" stroke="rgba(137, 188, 55, 0.7)" strokeWidth="6" strokeLinejoin="round" />
-          <path fill="none" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
-        </svg>
       ) : null}
 
       {has('refinance') || has('loans') ? (
@@ -805,8 +794,9 @@ function useStaticStory() {
 
 /**
  * The homepage from the hero down to the free tools. The downtown night clip stays pinned while
- * scrolling folds one tower into a house (purchase), walks through its door into the room (refinance),
- * parts the view into five blocks (loan options), and turns the street lights into the free tools.
+ * scrolling drops into its street, comes up to the house (purchase), walks through the garage into
+ * the room (refinance), parts the view into five blocks (loan options), and turns the street lights
+ * into the free tools.
  *
  * With reduced motion, or on a screen too short to pin, each beat is shown settled as its own section.
  */
