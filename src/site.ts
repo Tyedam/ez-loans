@@ -64,14 +64,3 @@ export const companyLinks = [
   { label: 'Purchase', href: '/purchase' },
   { label: 'Refinance', href: '/refinance' },
 ] as const
-
-export const marqueeItems = [
-  '30-Year Fixed',
-  '15-Year Fixed',
-  'FHA',
-  'VA',
-  'ARM',
-  'Purchase',
-  'Refinance',
-  'Pre-Approval',
-] as const

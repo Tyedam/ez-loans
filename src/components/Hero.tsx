@@ -3,33 +3,51 @@ import { FadeIn } from './FadeIn'
 import { SiteHeader } from './SiteHeader'
 import { site } from '../site'
 
-const HERO_VIDEO = '/media/detroit-night.mp4'
+export const HERO_VIDEO = '/media/detroit-night.mp4'
 
 const headline: readonly HeadingLine[] = [
   { text: 'Shop mortgage options.' },
   { text: 'Compare rates for free.', serif: true },
 ]
 
-export function Hero() {
+type HeroProps = {
+  /**
+   * Lay the hero over the pinned scroll story, which is already playing the skyline clip behind it.
+   * The story slides the copy away by setting --hero-shift.
+   */
+  pinned?: boolean
+}
+
+export function Hero({ pinned = false }: HeroProps) {
   return (
-    <section id="top" className="relative h-screen min-h-[620px] overflow-hidden bg-black text-white">
-      <video
-        className="absolute inset-0 h-full w-full object-cover object-center"
-        src={HERO_VIDEO}
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="auto"
-        aria-hidden="true"
-      />
+    <section
+      id="top"
+      className={
+        pinned ? 'absolute inset-0 text-white' : 'relative h-screen min-h-[620px] overflow-hidden bg-black text-white'
+      }
+    >
+      {pinned ? null : (
+        <video
+          className="absolute inset-0 h-full w-full object-cover object-center"
+          src={HERO_VIDEO}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+        />
+      )}
       {/* A short fade under the type only, so the towers and the river stay visible. */}
       <div
         className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/50 via-black/10 to-transparent"
         aria-hidden="true"
       />
 
-      <div className="relative z-10 flex h-full flex-col">
+      <div
+        className="relative z-10 flex h-full flex-col"
+        style={pinned ? { transform: 'translate3d(0, var(--hero-shift, 0px), 0)' } : undefined}
+      >
         <div className="px-6 pt-6 md:px-12 lg:px-16">
           <SiteHeader />
         </div>

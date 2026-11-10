@@ -1,21 +1,6 @@
 import { Link } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { SiteLink } from './SiteLink'
 import { companyLinks, loanLinks, site, toolLinks } from '../site'
-
-function SiteLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
-  if (href.startsWith('/')) {
-    return (
-      <Link to={href} className={className}>
-        {children}
-      </Link>
-    )
-  }
-  return (
-    <a href={href} className={className}>
-      {children}
-    </a>
-  )
-}
 
 const columns = [
   { title: 'Loans', links: loanLinks },

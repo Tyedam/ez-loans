@@ -21,12 +21,6 @@ body {
   overflow: hidden;
 }
 
-.marquee {
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-}
-
 /* The italic serif half of an editorial headline. Instrument Serif runs small next to Inter. */
 .serif-em {
   font-family: 'Instrument Serif', Georgia, serif;
@@ -41,62 +35,116 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65), 0 0 20px rgba(0, 0, 0, 0.55);
 }
 
-/* A house silhouette with a doorway, used to mask the clip in the facts band. */
-.house-mark {
-  background: linear-gradient(160deg, #89bc37 0%, #3f5a17 100%);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 6 94 44V94H64V62H36V94H6V44Z' fill='%23000' stroke='%23000' stroke-width='8' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 6 94 44V94H64V62H36V94H6V44Z' fill='%23000' stroke='%23000' stroke-width='8' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+/*
+ * The homepage skyline story. The track is the scroll distance and the stage is the screen pinned inside it.
+ * SkylineStory.tsx moves everything on the stage from a requestAnimationFrame loop.
+ */
+.story-track {
+  height: calc(var(--story-screens) * 100vh);
+  height: calc(var(--story-screens) * 100dvh);
 }
 
-/* The soft green section behind the three service cards. */
-.green-field {
-  background:
-    radial-gradient(110% 70% at 12% 0%, rgba(137, 188, 55, 0.38), transparent 62%),
-    radial-gradient(80% 60% at 100% 100%, rgba(137, 188, 55, 0.16), transparent 65%),
-    linear-gradient(180deg, #2b3f15 0%, #1b290e 52%, #0d1407 100%);
+.story-stage {
+  height: 100vh;
+  height: 100dvh;
 }
 
-.marquee-track {
-  display: flex;
-  gap: 4rem;
-  /* Trailing gap so the -50% loop lands exactly on the second copy. */
-  padding-right: 4rem;
-  width: max-content;
-  animation: scroll-x 32s linear infinite;
+/* A soft shadow pooled behind copy that sits on the skyline. It ends at the edge of the type. */
+.story-scrim {
+  position: relative;
+  isolation: isolate;
 }
 
-.marquee:hover .marquee-track {
-  animation-play-state: paused;
+.story-scrim::before {
+  content: '';
+  position: absolute;
+  inset: -2.5rem -3rem;
+  z-index: -1;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.38) 55%, transparent);
+  pointer-events: none;
 }
 
-@keyframes scroll-x {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-/* Scaled up so a small scroll shift stays inside the card. */
-.scroll-photo {
+/* Green light behind the house once the skyline has folded into it. */
+.story-glow {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  pointer-events: none;
-  transform: scale(1.14);
-  transform-origin: center center;
-  will-change: transform;
+  opacity: 0;
+  background: radial-gradient(
+    34rem 30rem at var(--glow-x, 70%) var(--glow-y, 50%),
+    rgba(137, 188, 55, 0.3),
+    rgba(137, 188, 55, 0.08) 55%,
+    transparent 75%
+  );
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .marquee-track {
-    animation: none;
-  }
+/* A dark panel for copy over the bright refinance clip. Local to the type, not a scrim on the clip. */
+.story-card {
+  background: rgba(22, 22, 22, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12);
+}
 
-  .scroll-photo {
-    top: 0;
-    height: 100%;
-    transform: none;
-  }
+/* A short fade at the foot of each tower so the loan name reads over the daylight clip. */
+.tower-shade {
+  position: absolute;
+  inset: auto 0 0;
+  height: 60%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.4) 55%, transparent);
+  transition: height 300ms;
+}
+
+a:hover > .tower-shade {
+  height: 75%;
+}
+
+.tool-pill {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(8, 12, 20, 0.66);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.tool-label {
+  opacity: var(--label, 1);
+}
+
+/* The lit face of a river light, which clears as the light opens into its tool. */
+.tool-core {
+  position: absolute;
+  inset: 0;
+  background: #f3ffdc;
+  opacity: var(--core, 0);
+  pointer-events: none;
+}
+
+/* The glow around a river light, with its reflection trailing down the water. */
+.river-light {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.9) 8%, rgba(137, 188, 55, 0.55) 30%, transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.river-light::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 96px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: linear-gradient(rgba(214, 240, 170, 0.75), transparent);
 }
 
 .liquid-glass::before {
