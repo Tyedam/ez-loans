@@ -14,6 +14,8 @@ export const site = {
   phoneHref: 'tel:8442047863',
   email: 'info@ezloansmi.com',
   address: '1019 Naughton Rd, Troy, MI 48083',
+  nmls: 'NMLS #2273319',
+  licensedIn: 'Licensed in 36 states + DC',
   facebook: 'https://www.facebook.com/people/EZ-Loans/',
   instagram: 'https://www.instagram.com/ezloansmi/',
   secureApplication: 'https://ezloansmi.com/secure-application',

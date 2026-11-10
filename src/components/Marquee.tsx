@@ -1,20 +1,25 @@
 import { marqueeItems } from '../site'
 
 export function Marquee() {
-  const items = [...marqueeItems, ...marqueeItems]
-
   return (
-    <section className="border-y border-white/10 bg-black py-10" aria-label="Loan options">
-      <p className="mb-6 text-center text-xs uppercase tracking-[0.14em] text-gray-400">
-        Mortgage options from EZ Loans Group
-      </p>
-      <div className="marquee">
-        <div className="marquee-track">
-          {items.map((item, index) => (
-            <span key={`${item}-${index}`} className="text-lg font-medium text-brand">
-              {item}
-            </span>
-          ))}
+    <section className="bg-black px-6 pb-20 md:px-12 lg:px-16" aria-label="Loan options">
+      <div className="mx-auto flex max-w-[1240px] flex-col gap-5 border-t border-white/10 pt-8 lg:flex-row lg:items-center lg:gap-14">
+        <p className="shrink-0 text-xs uppercase tracking-[0.14em] text-white/45">
+          Mortgage options from EZ Loans Group
+        </p>
+        <div className="marquee min-w-0 flex-1">
+          <div className="marquee-track">
+            {marqueeItems.map((item) => (
+              <span key={item} className="text-lg font-medium text-white/60">
+                {item}
+              </span>
+            ))}
+            {marqueeItems.map((item) => (
+              <span key={`${item}-repeat`} className="text-lg font-medium text-white/60" aria-hidden="true">
+                {item}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </section>

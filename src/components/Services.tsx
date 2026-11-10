@@ -109,37 +109,51 @@ function ScrollClip({
 
 export function Services() {
   return (
-    <section id="services" className="bg-black px-6 py-24 text-white md:px-12 lg:px-16">
-      <div className="mx-auto max-w-[1240px] text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">How we help</p>
-        <h2 className="mx-auto mt-4 max-w-3xl text-balance text-4xl font-semibold leading-[1.1] tracking-tight md:text-5xl">
-          Purchase, refinance, or compare loan options.
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-balance text-base leading-relaxed text-gray-300">
-          Start with a qualifier, check a refinance, or look through fixed, adjustable, FHA, and VA loans.
-        </p>
+    <section id="services" className="green-field px-6 py-24 text-white md:px-12 lg:px-16 lg:py-28">
+      <div className="mx-auto flex max-w-[1240px] flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h2 className="max-w-3xl text-balance text-4xl font-normal leading-[1.08] tracking-tight md:text-5xl">
+            Buying a home or refinancing the one you have, shop your mortgage options and{' '}
+            <span className="serif-em">compare rates for free.</span>
+          </h2>
+          <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/70 md:text-base">
+            Start with a qualifier, check a refinance, or look through fixed, adjustable, FHA, and VA loans.
+          </p>
+        </div>
+        <Link
+          to="/apply"
+          className="inline-flex shrink-0 self-start rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:bg-brand hover:text-white lg:self-auto"
+        >
+          Get a free rate quote
+        </Link>
       </div>
-      <div className="mx-auto mt-14 grid max-w-[1240px] gap-5 lg:grid-cols-3">
-        {services.map((service) => (
+
+      <div className="mx-auto mt-16 grid max-w-[1240px] gap-5 lg:mt-24 lg:grid-cols-3">
+        {services.map((service, index) => (
           <Link
             key={service.title}
             to={service.href}
-            className="group relative flex min-h-[420px] flex-col justify-end overflow-hidden rounded-[40px] border border-white/10 p-8"
+            className="group flex flex-col rounded-[28px] border border-white/15 bg-black/25 p-3 backdrop-blur-sm transition-colors hover:border-white/35"
           >
-            <ScrollClip
-              src={service.video}
-              label={service.alt}
-              focus={service.focus}
-              reverse={service.href === '/refinance'}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
-            <div className="relative">
-              <span className="inline-flex rounded-full bg-brand/20 px-3 py-1 text-xs font-medium text-brand">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-[20px]">
+              <ScrollClip
+                src={service.video}
+                label={service.alt}
+                focus={service.focus}
+                reverse={service.href === '/refinance'}
+              />
+            </div>
+            <div className="flex flex-1 flex-col px-3 pb-4 pt-6">
+              <p className="text-xs uppercase tracking-[0.14em] text-white/55">
+                <span className="text-brand">0{index + 1}</span>
+                <span className="mx-2 text-white/30">/</span>
                 {service.tag}
+              </p>
+              <h3 className="mt-3 text-2xl font-normal tracking-tight">{service.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/70">{service.body}</p>
+              <span className="mt-auto inline-flex pt-6 text-sm font-medium text-brand transition-transform group-hover:translate-x-1">
+                {service.action} →
               </span>
-              <h3 className="mt-4 text-2xl font-semibold tracking-tight">{service.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-gray-200">{service.body}</p>
-              <span className="mt-5 inline-flex text-sm font-medium text-brand">{service.action} →</span>
             </div>
           </Link>
         ))}
