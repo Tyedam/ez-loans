@@ -212,8 +212,8 @@ function Stage({ beat, children }: StageProps) {
       const wide = w >= 1024
       const river = waterlineY(w, h)
 
-      // The house stands on the right on wide screens and under the copy on narrow ones.
-      const band = h * (wide ? 0.82 : 0.87)
+      // The house stands on the shore of this clip, on the right on wide screens and centered on narrow ones.
+      const band = Math.min(Math.max(river, h * 0.72), h * 0.9)
       const size = wide ? Math.min(h * 0.5, w * 0.36) : Math.min(h * 0.33, w * 0.8)
       const houseBox = { left: w * (wide ? 0.71 : 0.5) - size / 2, top: band - h * 0.045 - size, size }
 

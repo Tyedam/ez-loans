@@ -19,8 +19,8 @@ const fmt = (n: number) => n.toFixed(1)
 
 const at = ([x, y]: Point) => `${fmt(x)} ${fmt(y)}`
 
-/** The Detroit clip is 1920x1088 and the river meets the city 58% of the way down. */
-const SKYLINE = { width: 1920, height: 1088, waterline: 0.582 }
+/** The downtown night clip is 1920x1088. The shore sits near the bottom of the frame. */
+const SKYLINE = { width: 1920, height: 1088, waterline: 0.8 }
 
 /** Where the clip's waterline lands in a stage that shows it with object-fit: cover. */
 export function waterlineY(width: number, height: number) {
