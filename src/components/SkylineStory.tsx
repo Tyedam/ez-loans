@@ -4,10 +4,10 @@ import { Hero, HERO_VIDEO } from './Hero'
 import { SiteLink } from './SiteLink'
 import {
   boundsOf,
-  clamp01,
-  drawRipple,
+  doorRect,
   ease,
   housePoints,
+  openingPoints,
   lerp,
   roundedPath,
   smoothLine,
@@ -78,7 +78,6 @@ const TOWER_HEIGHTS = [0.44, 0.5, 0.56, 0.5, 0.44]
 const TOWER_LABEL_STAGGER = 0.04
 const LIGHT_STAGGER = 0.035
 const LIGHT_DOT = 12
-const RIPPLE = 9
 const COPY_LIFT = 28
 
 const STATIC_QUERY = '(prefers-reduced-motion: reduce), (max-height: 619px)'
@@ -176,7 +175,6 @@ function Stage({ beat, children }: StageProps) {
   const purchaseVideoRef = useRef<HTMLVideoElement>(null)
   const tideRef = useRef<HTMLDivElement>(null)
   const refinanceVideoRef = useRef<HTMLVideoElement>(null)
-  const rippleRef = useRef<HTMLCanvasElement>(null)
   const loansVideoRef = useRef<HTMLVideoElement>(null)
   const crestRef = useRef<SVGSVGElement>(null)
   const railRef = useRef<HTMLElement>(null)
@@ -197,8 +195,6 @@ function Stage({ beat, children }: StageProps) {
     const skyline = skylineRef.current
     const house = houseRef.current
     const tideLayer = tideRef.current
-    const ripple = rippleRef.current
-    const rippleContext = ripple?.getContext('2d') ?? null
     const crest = crestRef.current
     const crestPaths = crest ? Array.from(crest.querySelectorAll('path')) : []
     const rail = railRef.current
@@ -255,11 +251,6 @@ function Stage({ beat, children }: StageProps) {
         })
       }
 
-      if (ripple) {
-        ripple.width = Math.min(w, 960)
-        ripple.height = Math.round((ripple.width * h) / w)
-      }
-
       return { w, h, river, band, house: houseBox, towers, pills }
     }
 
@@ -281,15 +272,16 @@ function Stage({ beat, children }: StageProps) {
         hero.style.setProperty('--hero-shift', `${(-Math.min(x, AT.heroOut[1]) * h * 0.7).toFixed(1)}px`)
       }
 
-      // The river surface: a low band under the house, then a tide that climbs the whole frame.
-      const swell = lerp(h * 0.006, h * 0.024, ease(span(tide, 0, 0.35))) * ease(span(morph, 0.4, 1))
-      const surface = waveLine(w, lerp(band, -h * 0.06, ease(tide)), swell, time * 1.1)
+      // The river stays a low band under the house. Refinance is a walk through the door, not a rising tide.
+      const swell = h * 0.006 * ease(span(morph, 0.4, 1)) * (1 - ease(tide))
+      const surface = waveLine(w, band, swell, time * 1.1)
       const water = waterPath(surface, w, h)
 
       // Beat 1: the frame folds into a house, and the purchase clip takes over inside it.
       const corners = housePoints(w, h, layout.house, morph)
       const radius = morph * layout.house.size * 0.035
-      const houseStands = morph > 0 && tide < 0.8
+      const houseStands = morph > 0 && tide < 0.96
+      const entered = ease(span(tide, 0.28, 0.72))
 
       if (skyline) {
         const covered = tide >= 1 && split <= 0
@@ -318,19 +310,26 @@ function Stage({ beat, children }: StageProps) {
           house.style.width = `${box.width.toFixed(1)}px`
           house.style.height = `${box.height.toFixed(1)}px`
           house.style.clipPath = `path("${roundedPath(local, radius)}")`
-          house.style.opacity = inside.toFixed(3)
+          house.style.opacity = (inside * (1 - entered)).toFixed(3)
         }
       }
 
-      // Beat 2: the river rises as a rippling reflection and settles into the refinance clip.
+      // Beat 2: the interior opens in the doorway and grows until you are standing in the room.
       // Beat 3: that frame splits into five towers, one per loan, which later sink back into the river.
       const loansIn = ease(span(split, 0.2, 0.75))
+      const door = doorRect(layout.house)
       if (tideLayer) {
         const shown = tide > 0 && sink < 1
         setVisible(tideLayer, shown)
         if (shown && tide < 1) {
-          tideLayer.style.clipPath = `path("${water}")`
-          tideLayer.style.opacity = ease(span(tide, 0.02, 0.42)).toFixed(3)
+          // First the room fills the doorway, then the whole house, then the frame.
+          const t = ease(tide)
+          const within = ease(span(t, 0, 0.55))
+          const beyond = ease(span(t, 0.5, 1))
+          const open = openingPoints(w, h, layout.house, within, beyond)
+          const round = layout.house.size * 0.035 * (1 - beyond)
+          tideLayer.style.clipPath = `path("${roundedPath(open, round)}")`
+          tideLayer.style.opacity = ease(span(tide, 0, 0.08)).toFixed(3)
         } else if (shown && split <= 0) {
           tideLayer.style.clipPath = 'none'
           tideLayer.style.opacity = '1'
@@ -358,23 +357,22 @@ function Stage({ beat, children }: StageProps) {
       }
       if (loansVideo) loansVideo.style.opacity = loansIn.toFixed(3)
       setVisible(refinanceVideo, loansIn < 1)
-
-      const rippling = tide > 0 && tide < 1
-      if (ripple && rippleContext) {
-        const reach = rippling ? RIPPLE * (1 - ease(span(tide, 0.35, 0.95))) : 0
-        ripple.style.opacity = clamp01(reach / 2).toFixed(3)
-        if (reach > 0.05 && refinanceVideo) {
-          const night = 0.45 * (1 - ease(span(tide, 0.05, 0.6)))
-          drawRipple(rippleContext, refinanceVideo, (reach * ripple.width) / w, time, night)
+      if (refinanceVideo) {
+        if (tide > 0 && tide < 1) {
+          // The room's center starts in the doorway, then settles to fill the frame as you step through.
+          const through = ease(span(ease(tide), 0.35, 1))
+          const zoom = lerp(1.55, 1, through)
+          const shiftX = lerp((door.left + door.right) / 2 - w / 2, 0, through)
+          const shiftY = lerp((door.top + door.bottom) / 2 - h / 2, 0, through)
+          refinanceVideo.style.transformOrigin = 'center center'
+          refinanceVideo.style.transform = `translate(${shiftX.toFixed(1)}px, ${shiftY.toFixed(1)}px) scale(${zoom.toFixed(3)})`
+        } else {
+          refinanceVideo.style.transform = ''
+          refinanceVideo.style.transformOrigin = ''
         }
       }
-
       if (crest) {
-        const glint = rippling
-          ? lerp(0.5, 1, span(tide, 0, 0.2)) * (1 - span(tide, 0.85, 1))
-          : tide <= 0
-            ? 0.5 * ease(span(morph, 0.6, 1))
-            : 0
+        const glint = 0.5 * ease(span(morph, 0.6, 1)) * (1 - ease(tide))
         crest.style.opacity = glint.toFixed(3)
         if (glint > 0) {
           const d = smoothLine(surface)
@@ -599,7 +597,6 @@ function Stage({ beat, children }: StageProps) {
               aria-label="A bright open living room with wood floors and a staircase"
             />
           ) : null}
-          {beat ? null : <canvas ref={rippleRef} className="absolute inset-0 h-full w-full" aria-hidden="true" />}
           {has('loans') ? (
             <video
               ref={loansVideoRef}
@@ -815,7 +812,7 @@ function useStaticStory() {
 
 /**
  * The homepage from the hero down to the free tools. The Detroit riverfront clip stays pinned while
- * scrolling folds it into a house (purchase), floods it from the river (refinance), splits it into
+ * scrolling folds it into a house (purchase), walks through its door into the room (refinance), splits it into
  * five towers (loan options), and lights eight river lamps (free tools).
  *
  * With reduced motion, or on a screen too short to pin, each beat is shown settled as its own section.

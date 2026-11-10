@@ -56,6 +56,63 @@ const FRAME: readonly Point[] = [
 
 const DOOR_TOP = new Set([4, 5])
 
+/** A solid doorway, then the solid house around it. Five corners, no cutout, so the room can fill it. */
+const DOOR_SOLID: readonly Point[] = [
+  [0.5, 0.636],
+  [0.659, 0.636],
+  [0.659, 1],
+  [0.341, 1],
+  [0.341, 0.636],
+]
+
+const HOUSE_SOLID: readonly Point[] = [
+  [0.5, 0],
+  [1, 0.432],
+  [1, 1],
+  [0, 1],
+  [0, 0.432],
+]
+
+const FRAME_SOLID: readonly Point[] = [
+  [0.5, 0],
+  [1, 0],
+  [1, 1],
+  [0, 1],
+  [0, 0],
+]
+
+/**
+ * The refinance opening. `within` grows it from the doorway to the house.
+ * `beyond` carries that house out to the full frame.
+ */
+export function openingPoints(
+  width: number,
+  height: number,
+  box: HouseBox,
+  within: number,
+  beyond: number,
+): Point[] {
+  return HOUSE_SOLID.map(([hx, hy], index) => {
+    const [dx, dy] = DOOR_SOLID[index]
+    const [fx, fy] = FRAME_SOLID[index]
+    const x = lerp(box.left + lerp(dx, hx, within) * box.size, fx * width, beyond)
+    const y = lerp(box.top + lerp(dy, hy, within) * box.size, fy * height, beyond)
+    return [x, y] as Point
+  })
+}
+
+/** The doorway cut out of a fully formed house, in stage pixels. */
+export function doorRect(box: HouseBox) {
+  const [rightX, topY] = HOUSE[4]
+  const [leftX] = HOUSE[5]
+  return {
+    left: box.left + leftX * box.size,
+    top: box.top + topY * box.size,
+    right: box.left + rightX * box.size,
+    bottom: box.top + box.size,
+  }
+}
+
 /** Corners of the frame at t = 0 and of the house at t = 1. The doorway opens in the second half. */
 export function housePoints(width: number, height: number, box: HouseBox, t: number): Point[] {
   const feet = lerp(height, box.top + box.size, t)
