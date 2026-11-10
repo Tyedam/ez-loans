@@ -12,6 +12,8 @@ type PageFrameProps = {
   title: string
   lede: string
   media?: string
+  /** Where the clip sits inside its frame. A portrait house needs the facade, not the driveway. */
+  mediaPosition?: string
   primary?: Action
   secondary?: Action
   children?: ReactNode
@@ -36,7 +38,7 @@ function ActionLink({ action, tone }: { action: Action; tone: 'solid' | 'ghost' 
   )
 }
 
-export function PageFrame({ eyebrow, title, lede, media, primary, secondary, children }: PageFrameProps) {
+export function PageFrame({ eyebrow, title, lede, media, mediaPosition, primary, secondary, children }: PageFrameProps) {
   return (
     <>
       <div className="bg-black text-white">
@@ -63,6 +65,7 @@ export function PageFrame({ eyebrow, title, lede, media, primary, secondary, chi
             <div className="relative h-64 overflow-hidden rounded-[32px] border border-white/10 sm:h-80 lg:h-[360px]">
               <video
                 className="absolute inset-0 h-full w-full object-cover"
+                style={mediaPosition ? { objectPosition: mediaPosition } : undefined}
                 src={media}
                 muted
                 loop

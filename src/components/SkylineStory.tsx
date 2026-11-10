@@ -569,11 +569,12 @@ function Stage({ beat, children }: StageProps) {
           ref={houseRef}
           className="absolute overflow-hidden"
           role="img"
-          aria-label="A house silhouette showing a modern home with a garden and a glass balcony"
+          aria-label="A two-story house with a gabled roof, seen from the front"
         >
           <video
             ref={purchaseVideoRef}
             className={VIDEO}
+            style={{ objectPosition: 'center 34%' }}
             src={CLIPS.purchase}
             loop
             muted

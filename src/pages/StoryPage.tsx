@@ -18,6 +18,7 @@ type Story = {
   title: string
   lede: string
   media?: string
+  mediaPosition?: string
   sections: Section[]
   primary?: Action
   secondary?: Action
@@ -31,6 +32,7 @@ export const stories = {
     title: 'Find out how much home you can afford.',
     lede: 'Know what you can afford before you start searching. A purchase qualifier is free.',
     media: '/media/purchase.mp4',
+    mediaPosition: 'center 34%',
     sections: [
       {
         heading: 'How a purchase loan works here',
@@ -265,6 +267,7 @@ export function StoryView({ story, extra }: { story: Story; extra?: ReactNode })
       title={story.title}
       lede={story.lede}
       media={story.media}
+      mediaPosition={story.mediaPosition}
       primary={story.primary}
       secondary={story.secondary}
     >
