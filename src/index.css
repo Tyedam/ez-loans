@@ -60,15 +60,16 @@ body {
   position: absolute;
   inset: -2.5rem -3rem;
   z-index: -1;
-  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.38) 55%, transparent);
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.48) 62%, transparent);
   pointer-events: none;
 }
 
-/* Green light behind the house once the skyline has folded into it. */
+/* Green light on the towers around the house. The city stays visible through it. */
 .story-glow {
   position: absolute;
   inset: 0;
   opacity: 0;
+  pointer-events: none;
   background: radial-gradient(
     34rem 30rem at var(--glow-x, 70%) var(--glow-y, 50%),
     rgba(137, 188, 55, 0.3),
@@ -112,7 +113,7 @@ a:hover > .tower-shade {
   opacity: var(--label, 1);
 }
 
-/* The lit face of a river light, which clears as the light opens into its tool. */
+/* The lit face of a street light, which clears as the light opens into its tool. */
 .tool-core {
   position: absolute;
   inset: 0;
@@ -121,7 +122,7 @@ a:hover > .tower-shade {
   pointer-events: none;
 }
 
-/* The glow around a river light, with its reflection trailing down the water. */
+/* The glow around a street light, with a short streak up into the towers. */
 .river-light {
   position: absolute;
   left: 50%;
@@ -139,12 +140,12 @@ a:hover > .tower-shade {
   content: '';
   position: absolute;
   left: 50%;
-  top: 50%;
+  bottom: 46%;
   width: 3px;
-  height: 96px;
+  height: 48px;
   margin-left: -1.5px;
   border-radius: 2px;
-  background: linear-gradient(rgba(214, 240, 170, 0.75), transparent);
+  background: linear-gradient(transparent, rgba(214, 240, 170, 0.7));
 }
 
 .liquid-glass::before {

@@ -41,20 +41,23 @@ const HOUSE: readonly Point[] = [
   [0, 0.432],
 ]
 
-/** The same nine corners spread around the full frame, with the doorway folded flat. */
-const FRAME: readonly Point[] = [
-  [0.5, 0],
-  [1, 0],
-  [1, 1],
-  [0.659, 1],
-  [0.659, 1],
-  [0.341, 1],
-  [0.341, 1],
-  [0, 1],
-  [0, 0],
-]
-
 const DOOR_TOP = new Set([4, 5])
+
+/**
+ * A tower in the downtown clip, in the same corner order as the house.
+ * The roof is flat and the doorway is still shut, so it can fold into the silhouette.
+ */
+const TOWER_UNIT: readonly Point[] = [
+  [0.5, 0],
+  [0.84, 0],
+  [0.84, 1],
+  [0.66, 1],
+  [0.66, 1],
+  [0.34, 1],
+  [0.34, 1],
+  [0.16, 1],
+  [0.16, 0],
+]
 
 /** A solid doorway, then the solid house around it. Five corners, no cutout, so the room can fill it. */
 const DOOR_SOLID: readonly Point[] = [
@@ -113,14 +116,18 @@ export function doorRect(box: HouseBox) {
   }
 }
 
-/** Corners of the frame at t = 0 and of the house at t = 1. The doorway opens in the second half. */
-export function housePoints(width: number, height: number, box: HouseBox, t: number): Point[] {
-  const feet = lerp(height, box.top + box.size, t)
-  const door = (1 - HOUSE[4][1]) * box.size * ease(span(t, 0.5, 1))
+/**
+ * One tower in `box` folding into the house. The doorway opens once the roof has a peak.
+ * The city around the box stays where it is; only this building changes shape.
+ */
+export function risingHousePoints(box: HouseBox, t: number): Point[] {
+  const feet = box.top + box.size
+  const door = (1 - HOUSE[4][1]) * box.size * ease(span(t, 0.55, 1))
   return HOUSE.map(([hx, hy], index) => {
-    const [fx, fy] = FRAME[index]
-    const x = lerp(fx * width, box.left + hx * box.size, t)
-    return [x, DOOR_TOP.has(index) ? feet - door : lerp(fy * height, box.top + hy * box.size, t)]
+    const [tx, ty] = TOWER_UNIT[index]
+    const x = box.left + lerp(tx, hx, t) * box.size
+    const y = box.top + lerp(ty, hy, t) * box.size
+    return [x, DOOR_TOP.has(index) ? feet - door : y] as Point
   })
 }
 
@@ -188,13 +195,14 @@ export function waterPath(line: readonly Point[], width: number, height: number)
   return `${smoothLine(line)}L${fmt(width + OVERHANG)} ${fmt(height + OVERHANG)}L${fmt(-OVERHANG)} ${fmt(height + OVERHANG)}Z`
 }
 
-/** Five columns rising from the bottom edge, each with the curved cap of a cylinder seen side-on. */
+/** Five flat-topped towers, stepped in slightly at the roof the way the downtown blocks are. */
 export function towersPath(towers: readonly Tower[], height: number) {
   const floor = fmt(height + 8)
   return towers
     .map(({ x, top, width, bulge }) => {
       const right = x + width
-      return `M${fmt(x)} ${floor}L${at([x, top])}Q${at([x + width / 2, top - bulge * 2])} ${at([right, top])}L${fmt(right)} ${floor}Z`
+      const inset = Math.min(bulge, width * 0.18)
+      return `M${fmt(x)} ${floor}L${fmt(x + inset)} ${fmt(top)}L${fmt(right - inset)} ${fmt(top)}L${fmt(right)} ${floor}Z`
     })
     .join('')
 }
