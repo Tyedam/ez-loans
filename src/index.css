@@ -64,34 +64,33 @@ body {
   pointer-events: none;
 }
 
-/* Green light on the towers around the house. The city stays visible through it. */
-.story-glow {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    34rem 30rem at var(--glow-x, 70%) var(--glow-y, 50%),
-    rgba(137, 188, 55, 0.3),
-    rgba(137, 188, 55, 0.08) 55%,
-    transparent 75%
+/*
+ * The lawn, driveway and sky around the house as it comes down the street. They show through a
+ * soft-edged oval centred on the building, so the photo never has a straight edge against the night.
+ * SkylineStory.tsx grows the oval until it clears the corners of the stage.
+ */
+.story-daylight {
+  --halo-x: 50%;
+  --halo-y: 50%;
+  --halo-rx: 0px;
+  --halo-ry: 0px;
+  -webkit-mask-image: radial-gradient(
+    ellipse var(--halo-rx) var(--halo-ry) at var(--halo-x) var(--halo-y),
+    #000 40%,
+    transparent
   );
+  mask-image: radial-gradient(ellipse var(--halo-rx) var(--halo-ry) at var(--halo-x) var(--halo-y), #000 40%, transparent);
 }
 
 /*
- * The daylight around the house as it arrives at the end of the street. All four edges are feathered
- * by --feather, which SkylineStory.tsx brings to zero as the frame reaches the edges of the stage.
+ * The house photo carried on past its own edges, out of focus: sky above, lawn and driveway below.
+ * It fades out toward its own edges, so the daylight has no frame. --reach is how far the fade
+ * extends: 50% stops at the edges of the image, and more than that clears the corners of the stage.
  */
-.story-daylight {
-  --feather: 50%;
-  -webkit-mask-image:
-    linear-gradient(to right, transparent, #000 var(--feather), #000 calc(100% - var(--feather)), transparent),
-    linear-gradient(to bottom, transparent, #000 var(--feather), #000 calc(100% - var(--feather)), transparent);
-  mask-image:
-    linear-gradient(to right, transparent, #000 var(--feather), #000 calc(100% - var(--feather)), transparent),
-    linear-gradient(to bottom, transparent, #000 var(--feather), #000 calc(100% - var(--feather)), transparent);
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
+.story-haze {
+  --reach: 50%;
+  -webkit-mask-image: radial-gradient(ellipse var(--reach) var(--reach) at 50% 50%, #000 42%, transparent);
+  mask-image: radial-gradient(ellipse var(--reach) var(--reach) at 50% 50%, #000 42%, transparent);
 }
 
 /* A dark panel for copy over the bright refinance clip. Local to the type, not a scrim on the clip. */

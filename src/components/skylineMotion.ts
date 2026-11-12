@@ -6,7 +6,9 @@ export type HouseBox = { left: number; top: number; size: number }
 
 export type Tower = { x: number; top: number; width: number; bulge: number }
 
-export const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
+export const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
+
+export const clamp01 = (n: number) => clamp(n, 0, 1)
 
 export const lerp = (from: number, to: number, t: number) => from + (to - from) * t
 
@@ -44,26 +46,53 @@ export function coverFit(
   return { scale, left: (width - clipWidth * scale) * alignX, top: (height - clipHeight * scale) * alignY }
 }
 
+/** A zoomed and shifted look at a clip. A clip pixel p lands on the stage at x, y + p * scale. */
+export type View = { scale: number; x: number; y: number }
+
+/** Where a clip pixel lands on the stage in that view. */
+export const project = (view: View, [px, py]: Point): Point => [view.x + px * view.scale, view.y + py * view.scale]
+
 /**
- * The headlight avenue that runs away from the camera between the towers, left of centre in the
- * downtown clip. It is the vertical canyon of lights, not the intersection down by the trees.
- * `far` is up the avenue where the headlights disappear between the towers, and `near` is where
- * that avenue meets the shore road. The drone drifts, so both are given in clip pixels once a second.
+ * The view part of the way from one to another. It zooms at an even rate about the one clip pixel
+ * that sits at the same place on the stage in both, so the move reads as a single push in.
  */
-const AVENUE: readonly { far: Point; near: Point }[] = [
-  { far: [636, 600], near: [640, 830] },
-  { far: [628, 580], near: [631, 845] },
-  { far: [620, 560], near: [622, 860] },
-  { far: [596, 545], near: [598, 875] },
-  { far: [572, 530], near: [575, 890] },
-  { far: [556, 515], near: [560, 900] },
-  { far: [540, 500], near: [545, 910] },
-  { far: [524, 485], near: [530, 925] },
-  { far: [508, 470], near: [515, 940] },
+export function zoomBetween(from: View, to: View, t: number): View {
+  const gain = to.scale - from.scale
+  if (Math.abs(gain) < 1e-6) return { scale: from.scale, x: lerp(from.x, to.x, t), y: lerp(from.y, to.y, t) }
+  const pivotX = (from.x - to.x) / gain
+  const pivotY = (from.y - to.y) / gain
+  const scale = from.scale * Math.pow(to.scale / from.scale, t)
+  return { scale, x: from.x + pivotX * (from.scale - scale), y: from.y + pivotY * (from.scale - scale) }
+}
+
+/** The view enlarged by `factor` about a point on the stage, which stays where it is. */
+export function zoomAbout(view: View, [cx, cy]: Point, factor: number): View {
+  return { scale: view.scale * factor, x: cx + (view.x - cx) * factor, y: cy + (view.y - cy) * factor }
+}
+
+/** The two ends of the avenue, in clip pixels. */
+export type Avenue = { far: Point; near: Point }
+
+/**
+ * The headlight avenue in the downtown clip: the diagonal run of traffic between the towers, left
+ * of centre, with the glass tower and its blue light strip on the right. `far` is where the
+ * headlights disappear between the towers and `near` is where the avenue meets the cross street
+ * above the trees. The drone flies toward it, so both ends are given once a second.
+ */
+const AVENUE: readonly Avenue[] = [
+  { far: [729, 551], near: [872, 799] },
+  { far: [722, 547], near: [866, 803] },
+  { far: [714, 542], near: [861, 810] },
+  { far: [706, 537], near: [855, 817] },
+  { far: [697, 530], near: [847, 826] },
+  { far: [686, 523], near: [837, 836] },
+  { far: [675, 516], near: [826, 849] },
+  { far: [666, 509], near: [814, 867] },
+  { far: [660, 502], near: [800, 891] },
 ]
 
 /** Both ends of the avenue at `seconds` into the downtown clip. */
-export function avenueAt(seconds: number): { far: Point; near: Point } {
+export function avenueAt(seconds: number): Avenue {
   const clock = Math.min(Math.max(seconds, 0), AVENUE.length - 1)
   const from = AVENUE[Math.floor(clock)]
   const to = AVENUE[Math.ceil(clock)]
@@ -73,6 +102,11 @@ export function avenueAt(seconds: number): { far: Point; near: Point } {
     near: [lerp(from.near[0], to.near[0], t), lerp(from.near[1], to.near[1], t)],
   }
 }
+
+/** A point part of the way down the avenue, from the far end. */
+export const along = ({ far, near }: Avenue, t: number): Point => [lerp(far[0], near[0], t), lerp(far[1], near[1], t)]
+
+export const avenueLength = ({ far, near }: Avenue) => Math.hypot(near[0] - far[0], near[1] - far[1])
 
 /** The house silhouette on a unit square: apex, then clockwise around the eaves, feet, and doorway. */
 const HOUSE: readonly Point[] = [

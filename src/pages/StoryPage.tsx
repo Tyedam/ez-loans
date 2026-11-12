@@ -31,8 +31,8 @@ export const stories = {
     eyebrow: 'Purchase',
     title: 'Find out how much home you can afford.',
     lede: 'Know what you can afford before you start searching. A purchase qualifier is free.',
-    media: '/media/purchase.mp4',
-    mediaPosition: 'center 34%',
+    media: '/media/purchase.jpg',
+    mediaPosition: 'center 40%',
     sections: [
       {
         heading: 'How a purchase loan works here',
