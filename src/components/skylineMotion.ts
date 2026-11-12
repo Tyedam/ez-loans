@@ -2,11 +2,11 @@
 
 export type Point = readonly [number, number]
 
+export type HouseBox = { left: number; top: number; size: number }
+
 export type Tower = { x: number; top: number; width: number; bulge: number }
 
-export const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
-
-export const clamp01 = (n: number) => clamp(n, 0, 1)
+export const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 
 export const lerp = (from: number, to: number, t: number) => from + (to - from) * t
 
@@ -20,7 +20,7 @@ const fmt = (n: number) => n.toFixed(1)
 const at = ([x, y]: Point) => `${fmt(x)} ${fmt(y)}`
 
 /** The downtown night clip is 1920x1088. The shore sits near the bottom of the frame. */
-export const SKYLINE = { width: 1920, height: 1088, waterline: 0.8 }
+const SKYLINE = { width: 1920, height: 1088, waterline: 0.8 }
 
 /** Where the clip's waterline lands in a stage that shows it with object-fit: cover. */
 export function waterlineY(width: number, height: number) {
@@ -28,83 +28,141 @@ export function waterlineY(width: number, height: number) {
   return height / 2 + (SKYLINE.waterline - 0.5) * shownHeight
 }
 
-/** How object-fit: cover lays a clip into the stage. A clip pixel lands at left/top + pixel * scale. */
-export type Fit = { scale: number; left: number; top: number }
-
-/** `alignX` and `alignY` are the object-position, as fractions. */
-export function coverFit(
-  width: number,
-  height: number,
-  clipWidth: number,
-  clipHeight: number,
-  alignX = 0.5,
-  alignY = 0.5,
-): Fit {
-  const scale = Math.max(width / clipWidth, height / clipHeight)
-  return { scale, left: (width - clipWidth * scale) * alignX, top: (height - clipHeight * scale) * alignY }
-}
-
-/** A zoomed and shifted look at a clip. A clip pixel p lands on the stage at x, y + p * scale. */
-export type View = { scale: number; x: number; y: number }
-
-/** Where a clip pixel lands on the stage in that view. */
-export const project = (view: View, [px, py]: Point): Point => [view.x + px * view.scale, view.y + py * view.scale]
-
-/**
- * The view part of the way from one to another. It zooms at an even rate about the one clip pixel
- * that sits at the same place on the stage in both, so the move reads as a single push in.
- */
-export function zoomBetween(from: View, to: View, t: number): View {
-  const gain = to.scale - from.scale
-  if (Math.abs(gain) < 1e-6) return { scale: from.scale, x: lerp(from.x, to.x, t), y: lerp(from.y, to.y, t) }
-  const pivotX = (from.x - to.x) / gain
-  const pivotY = (from.y - to.y) / gain
-  const scale = from.scale * Math.pow(to.scale / from.scale, t)
-  return { scale, x: from.x + pivotX * (from.scale - scale), y: from.y + pivotY * (from.scale - scale) }
-}
-
-/** The view enlarged by `factor` about a point on the stage, which stays where it is. */
-export function zoomAbout(view: View, [cx, cy]: Point, factor: number): View {
-  return { scale: view.scale * factor, x: cx + (view.x - cx) * factor, y: cy + (view.y - cy) * factor }
-}
-
-/** The two ends of the avenue, in clip pixels. */
-export type Avenue = { far: Point; near: Point }
-
-/**
- * The headlight avenue in the downtown clip: the diagonal run of traffic between the towers, left
- * of centre, with the glass tower and its blue light strip on the right. `far` is where the
- * headlights disappear between the towers and `near` is where the avenue meets the cross street
- * above the trees. The drone flies toward it, so both ends are given once a second.
- */
-const AVENUE: readonly Avenue[] = [
-  { far: [729, 551], near: [872, 799] },
-  { far: [722, 547], near: [866, 803] },
-  { far: [714, 542], near: [861, 810] },
-  { far: [706, 537], near: [855, 817] },
-  { far: [697, 530], near: [847, 826] },
-  { far: [686, 523], near: [837, 836] },
-  { far: [675, 516], near: [826, 849] },
-  { far: [666, 509], near: [814, 867] },
-  { far: [660, 502], near: [800, 891] },
+/** The house silhouette on a unit square: apex, then clockwise around the eaves, feet, and doorway. */
+const HOUSE: readonly Point[] = [
+  [0.5, 0],
+  [1, 0.432],
+  [1, 1],
+  [0.659, 1],
+  [0.659, 0.636],
+  [0.341, 0.636],
+  [0.341, 1],
+  [0, 1],
+  [0, 0.432],
 ]
 
-/** Both ends of the avenue at `seconds` into the downtown clip. */
-export function avenueAt(seconds: number): Avenue {
-  const clock = Math.min(Math.max(seconds, 0), AVENUE.length - 1)
-  const from = AVENUE[Math.floor(clock)]
-  const to = AVENUE[Math.ceil(clock)]
-  const t = clock - Math.floor(clock)
+const DOOR_TOP = new Set([4, 5])
+
+/**
+ * A tower in the downtown clip, in the same corner order as the house.
+ * The roof is flat and the doorway is still shut, so it can fold into the silhouette.
+ */
+const TOWER_UNIT: readonly Point[] = [
+  [0.5, 0],
+  [0.84, 0],
+  [0.84, 1],
+  [0.66, 1],
+  [0.66, 1],
+  [0.34, 1],
+  [0.34, 1],
+  [0.16, 1],
+  [0.16, 0],
+]
+
+/** A solid doorway, then the solid house around it. Five corners, no cutout, so the room can fill it. */
+const DOOR_SOLID: readonly Point[] = [
+  [0.5, 0.636],
+  [0.659, 0.636],
+  [0.659, 1],
+  [0.341, 1],
+  [0.341, 0.636],
+]
+
+const HOUSE_SOLID: readonly Point[] = [
+  [0.5, 0],
+  [1, 0.432],
+  [1, 1],
+  [0, 1],
+  [0, 0.432],
+]
+
+const FRAME_SOLID: readonly Point[] = [
+  [0.5, 0],
+  [1, 0],
+  [1, 1],
+  [0, 1],
+  [0, 0],
+]
+
+/**
+ * The refinance opening. `within` grows it from the doorway to the house.
+ * `beyond` carries that house out to the full frame.
+ */
+export function openingPoints(
+  width: number,
+  height: number,
+  box: HouseBox,
+  within: number,
+  beyond: number,
+): Point[] {
+  return HOUSE_SOLID.map(([hx, hy], index) => {
+    const [dx, dy] = DOOR_SOLID[index]
+    const [fx, fy] = FRAME_SOLID[index]
+    const x = lerp(box.left + lerp(dx, hx, within) * box.size, fx * width, beyond)
+    const y = lerp(box.top + lerp(dy, hy, within) * box.size, fy * height, beyond)
+    return [x, y] as Point
+  })
+}
+
+/** The doorway cut out of a fully formed house, in stage pixels. */
+export function doorRect(box: HouseBox) {
+  const [rightX, topY] = HOUSE[4]
+  const [leftX] = HOUSE[5]
   return {
-    far: [lerp(from.far[0], to.far[0], t), lerp(from.far[1], to.far[1], t)],
-    near: [lerp(from.near[0], to.near[0], t), lerp(from.near[1], to.near[1], t)],
+    left: box.left + leftX * box.size,
+    top: box.top + topY * box.size,
+    right: box.left + rightX * box.size,
+    bottom: box.top + box.size,
   }
 }
 
-/** A point part of the way down the avenue, from the far end. */
-export const along = ({ far, near }: Avenue, t: number): Point => [lerp(far[0], near[0], t), lerp(far[1], near[1], t)]
+/**
+ * One tower in `box` folding into the house. The doorway opens once the roof has a peak.
+ * The city around the box stays where it is; only this building changes shape.
+ */
+export function risingHousePoints(box: HouseBox, t: number): Point[] {
+  const feet = box.top + box.size
+  const door = (1 - HOUSE[4][1]) * box.size * ease(span(t, 0.55, 1))
+  return HOUSE.map(([hx, hy], index) => {
+    const [tx, ty] = TOWER_UNIT[index]
+    const x = box.left + lerp(tx, hx, t) * box.size
+    const y = box.top + lerp(ty, hy, t) * box.size
+    return [x, DOOR_TOP.has(index) ? feet - door : y] as Point
+  })
+}
 
-export const avenueLength = ({ far, near }: Avenue) => Math.hypot(near[0] - far[0], near[1] - far[1])
+/** A closed path through the points with each corner rounded off by up to `radius`. */
+export function roundedPath(points: readonly Point[], radius: number) {
+  const count = points.length
+  let d = ''
+  for (let index = 0; index < count; index++) {
+    const corner = points[index]
+    const toward = (other: Point): Point => {
+      const length = Math.hypot(other[0] - corner[0], other[1] - corner[1])
+      if (length === 0) return corner
+      const reach = Math.min(radius, length / 2) / length
+      return [corner[0] + (other[0] - corner[0]) * reach, corner[1] + (other[1] - corner[1]) * reach]
+    }
+    const enter = toward(points[(index + count - 1) % count])
+    const leave = toward(points[(index + 1) % count])
+    d += `${index === 0 ? 'M' : 'L'}${at(enter)}Q${at(corner)} ${at(leave)}`
+  }
+  return `${d}Z`
+}
+
+export function boundsOf(points: readonly Point[]) {
+  let left = Infinity
+  let top = Infinity
+  let right = -Infinity
+  let bottom = -Infinity
+  for (const [x, y] of points) {
+    left = Math.min(left, x)
+    top = Math.min(top, y)
+    right = Math.max(right, x)
+    bottom = Math.max(bottom, y)
+  }
+  return { left, top, width: right - left, height: bottom - top }
+}
 
 const WAVE_STEPS = 28
 const OVERHANG = 24
@@ -132,7 +190,7 @@ export function smoothLine(line: readonly Point[]) {
   return `${d}L${at(line[line.length - 1])}`
 }
 
-/** Everything below the river surface. */
+/** Everything below the river surface, wound clockwise like the house so the two shapes add up. */
 export function waterPath(line: readonly Point[], width: number, height: number) {
   return `${smoothLine(line)}L${fmt(width + OVERHANG)} ${fmt(height + OVERHANG)}L${fmt(-OVERHANG)} ${fmt(height + OVERHANG)}Z`
 }

@@ -7,16 +7,12 @@ type Action = {
   href: string
 }
 
-/** Media that is a photo. Anything else is played as a clip. */
-const STILL = /\.(avif|jpe?g|png|webp)$/i
-
 type PageFrameProps = {
   eyebrow: string
   title: string
   lede: string
-  /** A clip or a photo. */
   media?: string
-  /** Where the media sits inside its frame, so the house stays in it and not just the driveway. */
+  /** Where the clip sits inside its frame. A portrait house needs the facade, not the driveway. */
   mediaPosition?: string
   primary?: Action
   secondary?: Action
@@ -67,24 +63,15 @@ export function PageFrame({ eyebrow, title, lede, media, mediaPosition, primary,
           </div>
           {media ? (
             <div className="relative h-64 overflow-hidden rounded-[32px] border border-white/10 sm:h-80 lg:h-[360px]">
-              {STILL.test(media) ? (
-                <img
-                  className="absolute inset-0 h-full w-full object-cover"
-                  style={mediaPosition ? { objectPosition: mediaPosition } : undefined}
-                  src={media}
-                  alt=""
-                />
-              ) : (
-                <video
-                  className="absolute inset-0 h-full w-full object-cover"
-                  style={mediaPosition ? { objectPosition: mediaPosition } : undefined}
-                  src={media}
-                  muted
-                  loop
-                  autoPlay
-                  playsInline
-                />
-              )}
+              <video
+                className="absolute inset-0 h-full w-full object-cover"
+                style={mediaPosition ? { objectPosition: mediaPosition } : undefined}
+                src={media}
+                muted
+                loop
+                autoPlay
+                playsInline
+              />
             </div>
           ) : null}
         </header>

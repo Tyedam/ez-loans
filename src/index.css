@@ -64,6 +64,28 @@ body {
   pointer-events: none;
 }
 
+/* Green light on the towers around the house. The city stays visible through it. */
+.story-glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    34rem 30rem at var(--glow-x, 70%) var(--glow-y, 50%),
+    rgba(137, 188, 55, 0.3),
+    rgba(137, 188, 55, 0.08) 55%,
+    transparent 75%
+  );
+}
+
+/* A dark panel for copy over the bright refinance clip. Local to the type, not a scrim on the clip. */
+.story-card {
+  background: rgba(22, 22, 22, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12);
+}
+
 /* A short fade at the foot of each tower so the loan name reads over the daylight clip. */
 .tower-shade {
   position: absolute;
@@ -120,50 +142,10 @@ a:hover > .tower-shade {
   left: 50%;
   bottom: 46%;
   width: 3px;
-  height: var(--streak, 48px);
+  height: 48px;
   margin-left: -1.5px;
   border-radius: 2px;
   background: linear-gradient(transparent, rgba(214, 240, 170, 0.7));
-}
-
-/* Headlights running up the avenue while the shot is still on the night street. */
-.street-streak {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 3px;
-  height: 42px;
-  margin: -21px 0 0 -1.5px;
-  border-radius: 2px;
-  background: linear-gradient(transparent, rgba(255, 226, 160, 0.95) 55%, transparent);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* A short brand line that draws in under the house headline. */
-.step-mark {
-  display: block;
-  width: 4.5rem;
-  height: 2px;
-  margin-top: 1.25rem;
-  transform: scaleX(0);
-  transform-origin: left center;
-  background: #89bc37;
-}
-
-/* A light on the roof of a loan tower, on before the name. */
-.tower-beacon {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 9px;
-  height: 9px;
-  margin-left: -4.5px;
-  border-radius: 50%;
-  background: #89bc37;
-  box-shadow: 0 0 18px 5px rgba(137, 188, 55, 0.8);
-  opacity: 0;
-  pointer-events: none;
 }
 
 .liquid-glass::before {
