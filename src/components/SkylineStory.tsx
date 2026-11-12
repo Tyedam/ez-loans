@@ -54,8 +54,6 @@ const MEDIA = {
   /** One frame of the downtown clip, 7.6 seconds in, where the drone is closest to the avenue. */
   avenue: '/media/avenue.jpg',
   purchase: '/media/purchase.jpg',
-  /** The purchase photo with its edges carried on outward for a photo's width and height on every side, all out of focus. */
-  purchaseHaze: '/media/purchase-soft.jpg',
   refinance: '/media/refinance.mp4',
   loans: '/media/loans.mp4',
 } as const
@@ -68,24 +66,28 @@ const AT = {
   heroOut: [0.1, 0.75],
   /** The shot drops from the aerial until the headlight avenue fills the stage. */
   dive: [0.25, 1.05],
-  /** Down the avenue to the house standing on it, until the house and its own street are the whole view. */
-  drive: [0.7, 2.4],
-  /** The garage door lifts and the shot goes through it into the room. */
-  garage: [3.2, 4.35],
+  /** Further down the same avenue. Still the night street from the hero, with no house in it yet. */
+  drive: [1.05, 1.9],
+  /** The end of the street opens into the suburb. */
+  open: [1.85, 2.65],
+  /** The suburb settles on the house. */
+  houseIn: [2.5, 3.05],
+  /** The room replaces the house across the whole frame. */
+  inside: [3.55, 4.3],
   split: [4.85, 5.75],
   towerLabels: [5.4, 5.75],
   towerLabelsOut: [6.4, 6.6],
   sink: [6.45, 6.9],
   lightsOn: [6.8, 7.02],
   lightsOpen: [7.06, 7.4],
-  /** The rail waits until the house is what the shot is about. */
-  railIn: [1.5, 1.9],
+  /** The rail waits until the suburb is open and the house is the shot. */
+  railIn: [2.55, 2.9],
 } as const satisfies Record<string, readonly [number, number]>
 
 const END = 8
 
 /** Where each beat sits still. Reduced motion and short screens show these and nothing in between. */
-const SETTLED: Record<Beat, number> = { purchase: 2.8, refinance: 4.6, loans: 6.15, tools: 7.8 }
+const SETTLED: Record<Beat, number> = { purchase: 3.2, refinance: 4.6, loans: 6.15, tools: 7.8 }
 
 /**
  * The avenue on the still frame, in clip pixels: where the headlights disappear between the towers,
@@ -98,94 +100,48 @@ const STREET_HORIZON = 0.3
 const STREET_SPAN = 0.78
 /** The least the downtown frame is enlarged for the street, which is what a very wide stage gets. */
 const STREET_ZOOM = 1.5
-/** The house stands this far down the avenue from its far end, so the headlights run right up to it. */
-const ON_ROAD = 0.1
+/** Where the street opens, a little down the headlights from where they disappear. */
+const ON_ROAD = 0.16
 /** How far into the dive the moving clip has been lined up with the still frame. */
 const STREET_MATCH = 0.2
 /** The part of the dive over which the still frame fades in over the moving clip. */
 const STREET_TAKES = [0.1, 0.42] as const
-/**
- * The street grows by the house's growth raised to this power. That is slower than the house,
- * so the towers slide past on both sides without the frame turning to mush.
- */
-const DRIVE_PUSH = 0.3
-/** How soft the street gets, in stage pixels, and the house sizes it goes out of focus between. */
-const STREET_BLUR = 7
-const STREET_SOFTENS = [0.12, 0.6] as const
-
-/** The purchase photo: a two-story house with a stone porch and a double garage, seen from its lawn. */
-const HOUSE_PHOTO = { width: 3200, height: 2133 }
-
-/** The house in that photo, in photo pixels. */
-const HOUSE = {
-  /**
-   * Apex of the tall gable, then clockwise: the porch gable, the dormer, the roof over the garage,
-   * down the garage wall, along the threshold and the steps, then back up the porch column.
-   */
-  outline: [
-    [1053, 135],
-    [1422, 437],
-    [1503, 400],
-    [1834, 672],
-    [1797, 515],
-    [2100, 243],
-    [2399, 500],
-    [2328, 713],
-    [2500, 721],
-    [2868, 838],
-    [2868, 855],
-    [2765, 878],
-    [2765, 1456],
-    [1750, 1456],
-    [1666, 1631],
-    [1297, 1631],
-    [1297, 1468],
-    [1203, 1521],
-    [391, 1521],
-    [391, 1396],
-    [400, 843],
-    [306, 781],
-  ],
-  /** The box around the building, without the lawn or the sky. */
-  bounds: { left: 306, top: 135, right: 2868, bottom: 1631 },
-  /** How far down the photo the garage threshold is. The house stands on the avenue at this height. */
-  threshold: 1456,
-  /** The garage door. The room opens here. */
-  garage: { left: 1779, top: 1036, right: 2607, bottom: 1451 },
-} as const satisfies Record<string, unknown>
-
-/** The house is this fraction of its full size when it first shows at the far end of the avenue. */
-const HOUSE_START = 0.06
-/** How far through the drive the house reaches full size. The rest clears the last of the night from the corners. */
-const HOUSE_ARRIVES = 0.84
-/**
- * Down the street only the building shows, cut out along its roofline. Between these sizes its own
- * lawn, driveway and sky spread out from it in a soft-edged oval, so it never has a hard frame.
- */
-const HOUSE_HALO = [0.08, 0.6] as const
-/**
- * Past the edges of the photo its sky, lawn and driveway carry on out of focus, in a second image
- * that reaches this many photo widths and heights beyond it. The night gives way to that daylight
- * between these sizes, so the house is never a hard shape on the dark.
- */
-const HAZE_REACH = 1
-const HOUSE_DAYLIGHT = [0.09, 0.3] as const
-/** The oval starts inside the building, grows to just past the nearest edges of the photo, then opens to clear every corner. */
-const HALO_TIGHT = 1.1
-const HALO_FRAMED = 1.12
-const HALO_OPEN = 4
-/** How bright the daylight photo is while the house is a small building on a night street. */
-const HOUSE_DUSK = 0.5
-/** The sizes between which the photo comes up to full daylight. */
-const HOUSE_DAWN = [0.12, 0.6] as const
+/** How much closer the drive gets once the avenue already fills the stage. */
+const DRIVE_PUSH = 1.35
+/** How much further the street is pushed past the shot while the suburb opens out of its far end. */
+const OPEN_PUSH = 1.7
+/** How much of the opening's radius shows the suburb whole. The rest is a long soft edge, so it reads as a dissolve and not a porthole. */
+const OPEN_CORE = 0.3
+/** Daylight glows out of the end of the street as it opens. This is how far past the opening's edge the glow reaches. */
+const GLOW_REACH = 1.2
+/** The colour of that daylight, as red, green, blue. */
+const DAYLIGHT = '255, 251, 242'
+/** How the glow falls away from its middle, as [percent of its radius, strength]. No step in it, so it never has an edge. */
+const GLOW_FALLOFF = [
+  [0, 1],
+  [20, 0.88],
+  [40, 0.6],
+  [60, 0.3],
+  [80, 0.09],
+  [100, 0],
+] as const
+/** The parts of the opening over which the glow comes up and then clears. */
+const GLOW_CUE: Cue = [0, 0.22, 0.3, 0.8]
+/** How out of focus the suburb is when the light first opens, as a share of the stage's short side, and the part of the opening over which it sharpens. */
+const OPEN_BLUR = 0.028
+const OPEN_SHARPENS = [0.35, 0.95] as const
+/** A blurred photo goes clear at its edges. It is enlarged by this many blur radii so those edges stay off the stage. */
+const BLUR_OVERSCAN = 5
+/** How much closer the suburb shot starts than it ends. It eases back to show the whole house as it settles. */
+const SETTLE_PULL = 0.04
 
 /** Fade in from, fade in to, fade out from, fade out to. */
 type Cue = readonly [number, number, number, number]
 
-/** The purchase copy is gone before AT.garage starts, so the door never opens under the button. */
+/** The purchase copy leaves before the room replaces the house. */
 const COPY_CUES: Record<Beat, Cue> = {
-  purchase: [2.38, 2.66, 2.95, 3.15],
-  refinance: [4.0, 4.4, 4.85, 5.1],
+  purchase: [2.9, 3.15, 3.4, 3.65],
+  refinance: [4.25, 4.55, 4.85, 5.1],
   loans: [5.3, 5.7, 6.4, 6.65],
   tools: [6.75, 7.1, END, END + 1],
 }
@@ -201,15 +157,19 @@ const COPY_LIFT = 28
 const STATIC_QUERY = '(prefers-reduced-motion: reduce), (max-height: 619px)'
 
 const VIDEO = 'absolute inset-0 h-full w-full object-cover'
-/** Media the story lays out whole, overhanging the stage: the downtown clip, its still frame and the house photo. */
+/** Media the story lays out whole, overhanging the stage: the downtown clip and its still frame. */
 const WIDE = `${VIDEO} max-w-none`
+/** The hero's short fade under the type. The picture above it is left as it is. */
+const SHADE =
+  'pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/50 via-black/10 to-transparent'
+/** Where the hero sets its type: along the bottom edge, on the hero's margins. */
+const COPY_FOOT = 'pointer-events-none absolute inset-x-0 bottom-0 px-6 pb-7 md:px-12 lg:px-16 lg:pb-9'
+/** The hero's two pills. */
 const PRIMARY =
   'rounded-full bg-brand px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-white hover:text-brand'
+const OUTLINE =
+  'rounded-full border border-white/30 bg-white/10 px-5 py-3 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white hover:text-brand'
 const SECONDARY = 'text-sm font-medium text-white underline-offset-4 transition-colors hover:text-brand'
-
-type Box = { left: number; top: number; right: number; bottom: number }
-
-type Oval = { rx: number; ry: number }
 
 type Layout = {
   w: number
@@ -217,20 +177,8 @@ type Layout = {
   river: number
   /** The downtown clip at rest, covering the stage. */
   sky: View
-  /** The same clip once the dive has settled on the avenue, and the spot on the stage where the house stands in it. */
+  /** The same clip once the dive has settled on the avenue, and the spot on the stage where that avenue opens. */
   street: { view: View; stand: Point }
-  /**
-   * The house of the purchase photo, in stage pixels, once it fills the stage. `cutout` is a clip-path
-   * along its outline, and `halo` is the oval its surroundings show through on the way in.
-   */
-  home: {
-    /** The foot of the building: the middle of the part in view, at the garage threshold. It rides on the avenue. */
-    foot: Point
-    cutout: string
-    garage: Box
-    /** Centre and sizes of the oval, measured from the top left corner of the photo. */
-    halo: { x: number; y: number; tight: Oval; framed: Oval; open: Oval }
-  }
   towers: Tower[]
   pills: { cx: number; cy: number; w: number; h: number }[]
 }
@@ -266,19 +214,45 @@ function fade(element: HTMLElement | null, opacity: number, lift = 0) {
   element.style.transform = `translate3d(0, ${lift.toFixed(1)}px, 0)`
 }
 
-function BeatCopy({
-  beat,
-  title,
-  accent,
-  body,
-  children,
-}: {
+type BeatCopyProps = {
   beat: Beat
   title: string
   accent: string
   body: string
   children: ReactNode
-}) {
+}
+
+/** A beat set the way the hero is: eyebrow, two-line headline, a sentence, two pills, then the licence line. */
+function HeroCopy({ beat, title, accent, body, children }: BeatCopyProps) {
+  return (
+    <>
+      <div className="grid gap-7 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:items-end lg:gap-16">
+        <div className="hero-copy">
+          <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-white/80">{BEAT_LABELS[beat]}</p>
+          <h2
+            className="text-[2.5rem] font-normal leading-[1.05] sm:text-6xl lg:text-7xl"
+            style={{ letterSpacing: '-0.03em' }}
+          >
+            {title}
+            <span className="serif-em block">{accent}</span>
+          </h2>
+          <p className="mt-5 max-w-md text-sm leading-relaxed text-white/90 md:text-base">{body}</p>
+        </div>
+        <div className="flex flex-wrap gap-3">{children}</div>
+      </div>
+      <div className="hero-copy mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-2 border-t border-white/25 pt-4 text-xs text-white/85">
+        <p>
+          {site.nmls} <span className="mx-2 text-white/40">/</span> {site.licensedIn}
+        </p>
+        <a href={site.phoneHref} className="transition-colors hover:text-brand">
+          {site.phoneDisplay}
+        </a>
+      </div>
+    </>
+  )
+}
+
+function BeatCopy({ beat, title, accent, body, children }: BeatCopyProps) {
   return (
     <>
       <p className="text-xs uppercase tracking-[0.14em] text-white/75">
@@ -310,17 +284,15 @@ function Stage({ beat, children }: StageProps) {
   const skylineVideoRef = useRef<HTMLVideoElement>(null)
   const avenueStillRef = useRef<HTMLImageElement>(null)
   const houseRef = useRef<HTMLDivElement>(null)
-  const houseMoveRef = useRef<HTMLDivElement>(null)
-  const houseCutRef = useRef<HTMLDivElement>(null)
   const housePhotoRef = useRef<HTMLImageElement>(null)
-  const surroundsRef = useRef<HTMLImageElement>(null)
-  const hazeRef = useRef<HTMLImageElement>(null)
+  const daylightRef = useRef<HTMLDivElement>(null)
   const tideRef = useRef<HTMLDivElement>(null)
   const refinanceVideoRef = useRef<HTMLVideoElement>(null)
   const loansVideoRef = useRef<HTMLVideoElement>(null)
   const railRef = useRef<HTMLElement>(null)
   const gridRef = useRef<HTMLUListElement>(null)
   const copyRefs = useRef<Partial<Record<Beat, HTMLDivElement | null>>>({})
+  const shadeRefs = useRef<Partial<Record<Beat, HTMLDivElement | null>>>({})
   const towerRefs = useRef<(HTMLAnchorElement | null)[]>([])
   const pillRefs = useRef<(HTMLDivElement | null)[]>([])
   const lightRefs = useRef<(HTMLSpanElement | null)[]>([])
@@ -334,20 +306,16 @@ function Stage({ beat, children }: StageProps) {
     const hero = heroRef.current
     const skyline = skylineRef.current
     const house = houseRef.current
-    const houseMove = houseMoveRef.current
-    const houseCut = houseCutRef.current
+    const housePhoto = housePhotoRef.current
+    const daylight = daylightRef.current
     const tideLayer = tideRef.current
     const rail = railRef.current
     const ticks = rail ? Array.from(rail.querySelectorAll('button')) : []
     const grid = gridRef.current
     const skylineVideo = skylineVideoRef.current
     const avenueStill = avenueStillRef.current
-    const surrounds = surroundsRef.current
-    const haze = hazeRef.current
     const refinanceVideo = refinanceVideoRef.current
     const loansVideo = loansVideoRef.current
-    /** The building and its surroundings are the same photo, laid out the same way. */
-    const housePhotos = [housePhotoRef.current, surrounds]
     const videos = [skylineVideo, refinanceVideo, loansVideo]
 
     const measure = (): Layout => {
@@ -371,83 +339,13 @@ function Stage({ beat, children }: StageProps) {
         layer.style.height = `${SKYLINE.height * skyScale}px`
       })
 
-      // Frame the purchase photo on the house. Centre the building, then slide over as far as it takes to keep the garage door in view.
-      const { bounds, garage, threshold } = HOUSE
-      const houseScale = Math.max(w / HOUSE_PHOTO.width, h / HOUSE_PHOTO.height)
-      const slackX = w - HOUSE_PHOTO.width * houseScale
-      const slackY = h - HOUSE_PHOTO.height * houseScale
-      const houseLeft = clamp(
-        Math.min(w / 2 - ((bounds.left + bounds.right) / 2) * houseScale, w * 0.96 - garage.right * houseScale),
-        slackX,
-        0,
-      )
-      // A little sky over the roof, unless that would push the garage threshold off the bottom.
-      const houseTop = clamp(
-        Math.min(h * 0.05 - bounds.top * houseScale, h * 0.94 - threshold * houseScale),
-        slackY,
-        0,
-      )
-      // The photo is laid out whole and overhangs the stage, so the rest of it is there to see while the house is still small.
-      const photoWidth = HOUSE_PHOTO.width * houseScale
-      const photoHeight = HOUSE_PHOTO.height * houseScale
-      housePhotos.forEach((photo) => {
-        if (!photo) return
-        photo.style.left = `${houseLeft}px`
-        photo.style.top = `${houseTop}px`
-        photo.style.width = `${photoWidth}px`
-        photo.style.height = `${photoHeight}px`
-      })
-      if (haze) {
-        haze.style.left = `${houseLeft - HAZE_REACH * photoWidth}px`
-        haze.style.top = `${houseTop - HAZE_REACH * photoHeight}px`
-        haze.style.width = `${(1 + 2 * HAZE_REACH) * photoWidth}px`
-        haze.style.height = `${(1 + 2 * HAZE_REACH) * photoHeight}px`
-      }
-      const onStage = ([x, y]: Point): Point => [houseLeft + x * houseScale, houseTop + y * houseScale]
-      const [garageLeft, garageTop] = onStage([garage.left, garage.top])
-      const [garageRight, garageBottom] = onStage([garage.right, garage.bottom])
-      const corners = HOUSE.outline.map((corner) => {
-        const [x, y] = onStage(corner)
-        return `${x.toFixed(1)}px ${y.toFixed(1)}px`
-      })
-      // The oval is centred on the building, in the photo's own pixels as laid out.
-      const haloX = ((bounds.left + bounds.right) / 2) * houseScale
-      const haloY = ((bounds.top + bounds.bottom) / 2) * houseScale
-      const home: Layout['home'] = {
-        foot: [
-          (Math.max(0, houseLeft + bounds.left * houseScale) + Math.min(w, houseLeft + bounds.right * houseScale)) / 2,
-          houseTop + threshold * houseScale,
-        ],
-        cutout: `polygon(${corners.join(',')})`,
-        garage: { left: garageLeft, top: garageTop, right: garageRight, bottom: garageBottom },
-        halo: {
-          x: haloX,
-          y: haloY,
-          tight: {
-            rx: (HALO_TIGHT * (bounds.right - bounds.left) * houseScale) / 2,
-            ry: (HALO_TIGHT * (bounds.bottom - bounds.top) * houseScale) / 2,
-          },
-          framed: {
-            rx: HALO_FRAMED * Math.min(haloX, photoWidth - haloX),
-            ry: HALO_FRAMED * Math.min(haloY, photoHeight - haloY),
-          },
-          open: {
-            rx: HALO_OPEN * Math.max(haloX, photoWidth - haloX),
-            ry: HALO_OPEN * Math.max(haloY, photoHeight - haloY),
-          },
-        },
-      }
-
-      // The street shot. The avenue runs down the stage through the spot where the foot of the house ends up,
-      // so the house comes down the line of headlights as it grows.
-      const runX = STREET.near[0] - STREET.far[0]
+      // The street shot. The avenue runs down the middle of the stage, the same night picture as the hero.
       const runY = STREET.near[1] - STREET.far[1]
       const streetScale = Math.max((STREET_SPAN * h) / runY, skyScale * STREET_ZOOM)
       const horizon = h * STREET_HORIZON
-      const farX = clamp(home.foot[0] - ((home.foot[1] - horizon) * runX) / runY, w * 0.14, w * 0.86)
       const streetView: View = {
         scale: streetScale,
-        x: clamp(farX - STREET.far[0] * streetScale, w - SKYLINE.width * streetScale, 0),
+        x: clamp(w * 0.5 - STREET.far[0] * streetScale, w - SKYLINE.width * streetScale, 0),
         y: clamp(horizon - STREET.far[1] * streetScale, h - SKYLINE.height * streetScale, 0),
       }
       const street: Layout['street'] = { view: streetView, stand: project(streetView, along(STREET, ON_ROAD)) }
@@ -486,7 +384,7 @@ function Stage({ beat, children }: StageProps) {
         })
       }
 
-      return { w, h, river, sky, street, home, towers, pills }
+      return { w, h, river, sky, street, towers, pills }
     }
 
     let layout = measure()
@@ -497,7 +395,6 @@ function Stage({ beat, children }: StageProps) {
 
     if (skylineVideo) skylineVideo.style.transformOrigin = '0 0'
     if (avenueStill) avenueStill.style.transformOrigin = '0 0'
-    if (houseMove) houseMove.style.transformOrigin = '0 0'
 
     /** Shows a layer of the downtown clip through that view. */
     const place = (layer: HTMLElement, view: View) => {
@@ -507,19 +404,19 @@ function Stage({ beat, children }: StageProps) {
 
     /** Draws the story at scroll position x (in screens). */
     const paint = (x: number) => {
-      const { w, h, river, sky, street, home } = layout
+      const { w, h, river, sky, street } = layout
       const diving = span(x, ...AT.dive)
       const dive = ease(diving)
-      const driven = span(x, ...AT.drive)
-      const garage = span(x, ...AT.garage)
+      const drive = ease(span(x, ...AT.drive))
+      const opening = span(x, ...AT.open)
+      const opened = ease(opening)
+      const houseIn = ease(span(x, ...AT.houseIn))
+      const inside = ease(span(x, ...AT.inside))
       const split = span(x, ...AT.split)
       const sink = ease(span(x, ...AT.sink))
-      const onStreet = diving > 0 && driven < 1
-      const houseStands = driven > 0 && garage < 1
-      // The house, and then the room, cover the city. It comes back between the loan towers.
-      const cityCovered = driven >= 1 && split <= 0
-      // The house doubles in size at an even rate on the way in, the way a building does as you close on it.
-      const size = Math.pow(HOUSE_START, 1 - ease(span(driven, 0, HOUSE_ARRIVES)))
+      // The night avenue stays up until the suburb has opened across it.
+      const onStreet = diving > 0 && opened < 1
+      const cityCovered = opened >= 1 && split <= 0
 
       // Opening: the hero copy drifts up and the shot starts down toward the avenue.
       if (hero) {
@@ -528,28 +425,21 @@ function Stage({ beat, children }: StageProps) {
         hero.style.setProperty('--hero-shift', `${(-Math.min(x, AT.heroOut[1]) * h * 0.7).toFixed(1)}px`)
       }
 
-      // The street. `stand` is the spot on the stage where the house stands on the avenue.
+      // The street, continuing the hero. `stand` is the end of the headlights, where the suburb opens.
       const clock = skylineVideo ? skylineVideo.currentTime : 0
-      let stand = home.foot
-      // How far the still frame of the avenue has replaced the moving clip.
+      let stand = street.stand
       let taken = 0
       if (onStreet) {
-        // The dive pushes in until the avenue runs down the stage. The drive keeps pushing, about the spot the house stands on.
-        const shot = zoomAbout(
-          zoomBetween(sky, street.view, dive),
-          street.stand,
-          Math.pow(size / HOUSE_START, DRIVE_PUSH),
-        )
+        // The shot keeps moving down the street while the suburb opens, so the towers slide off past it.
+        const push = lerp(1, DRIVE_PUSH, drive) * lerp(1, OPEN_PUSH, opened)
+        const shot = zoomAbout(zoomBetween(sky, street.view, dive), street.stand, push)
         stand = project(shot, along(STREET, ON_ROAD))
-        const soft = STREET_BLUR * ease(span(size, ...STREET_SOFTENS))
-        // The blur is set in the layer's own pixels, before it is enlarged.
-        const blur = soft > 0.05 ? `blur(${((soft * sky.scale) / shot.scale).toFixed(2)}px)` : ''
 
         if (avenueStill && avenueStill.complete && avenueStill.naturalWidth > 0) {
           taken = ease(span(diving, ...STREET_TAKES))
           place(avenueStill, shot)
           avenueStill.style.opacity = taken.toFixed(3)
-          avenueStill.style.filter = blur
+          avenueStill.style.filter = ''
         }
         if (skylineVideo && taken < 1) {
           // The moving clip is wherever the drone had got to. Slide and enlarge it until its avenue lies on the still's.
@@ -564,7 +454,7 @@ function Stage({ beat, children }: StageProps) {
             x: lerp(from[0], to[0], match) - middle[0] * scale,
             y: lerp(from[1], to[1], match) - middle[1] * scale,
           })
-          skylineVideo.style.filter = blur
+          skylineVideo.style.filter = ''
         }
       } else if (skylineVideo) {
         skylineVideo.style.transform = ''
@@ -574,74 +464,47 @@ function Stage({ beat, children }: StageProps) {
       setVisible(skylineVideo, taken < 1)
       setVisible(skyline, !cityCovered)
 
-      // Beat 2: the garage door lifts and the shot goes through it. `opening` is the doorway on the stage.
-      const door = home.garage
-      const reach = Math.max(w / (door.right - door.left), h / (door.bottom - door.top))
-      const through = (Math.pow(reach, ease(span(garage, 0.1, 1))) - 1) / (reach - 1)
-      const opening = {
-        left: lerp(door.left, 0, through),
-        top: lerp(door.top, 0, through),
-        right: lerp(door.right, w, through),
-        bottom: lerp(door.bottom, h, through),
-      }
-
-      // Beat 1: the house stands at the far end of the avenue, small at first, and grows as the street runs under you.
-      setVisible(house, houseStands)
-      if (house && houseMove && houseCut && houseStands) {
-        let move = ''
-        let cut = 'none'
-        let grade = ''
-        let spread = 0
-        let daylight = 0
-        if (driven < 1) {
-          // It leaves its spot on the avenue in step with its growth, so the photo and the street open out from the same point.
-          const arrived = (size - HOUSE_START) / (1 - HOUSE_START)
-          const footX = lerp(stand[0], home.foot[0], arrived)
-          const footY = lerp(stand[1], home.foot[1], arrived)
-          move = `translate3d(${(footX - size * home.foot[0]).toFixed(1)}px, ${(footY - size * home.foot[1]).toFixed(1)}px, 0) scale(${size.toFixed(4)})`
-          cut = home.cutout
-          // A daylight photo on a night street: it starts at dusk and comes up to day as it takes the frame.
-          const day = ease(span(size, ...HOUSE_DAWN))
-          if (day < 1) grade = `brightness(${lerp(HOUSE_DUSK, 1, day).toFixed(3)}) saturate(${lerp(0.8, 1, day).toFixed(3)})`
-          spread = ease(span(size, ...HOUSE_HALO))
-          daylight = ease(span(size, ...HOUSE_DAYLIGHT))
-          const cleared = Math.pow(ease(span(driven, HOUSE_ARRIVES - 0.04, 1)), 2)
-          // The out-of-focus daylight reaches as far as its image does, then past the corners of the stage.
-          if (haze) haze.style.setProperty('--reach', `${lerp(50, 160, cleared).toFixed(1)}%`)
-          if (surrounds && spread > 0) {
-            // Its lawn, driveway and sky show through an oval that grows out from the building, then clears the corners.
-            const { tight, framed, open } = home.halo
-            surrounds.style.setProperty('--halo-rx', `${lerp(lerp(tight.rx, framed.rx, spread), open.rx, cleared).toFixed(1)}px`)
-            surrounds.style.setProperty('--halo-ry', `${lerp(lerp(tight.ry, framed.ry, spread), open.ry, cleared).toFixed(1)}px`)
-            surrounds.style.setProperty('--halo-x', `${home.halo.x.toFixed(1)}px`)
-            surrounds.style.setProperty('--halo-y', `${home.halo.y.toFixed(1)}px`)
+      // The whole suburb photo opens out of the end of the street, soft at the edge, until it is the frame.
+      const showHouse = opened > 0 && inside < 1
+      const isOpening = opened > 0 && opened < 1
+      setVisible(house, showHouse)
+      setVisible(daylight, isOpening)
+      if (house && showHouse) {
+        if (isOpening) {
+          // Far enough to clear whichever corner of the stage is furthest from the end of the street.
+          const reach = Math.hypot(Math.max(stand[0], w - stand[0]), Math.max(stand[1], h - stand[1]))
+          const radius = (opened * reach) / OPEN_CORE
+          const centre = `${stand[0].toFixed(1)}px ${stand[1].toFixed(1)}px`
+          const iris = `radial-gradient(circle ${radius.toFixed(1)}px at ${centre}, #000 ${OPEN_CORE * 100}%, transparent)`
+          house.style.setProperty('-webkit-mask-image', iris)
+          house.style.setProperty('mask-image', iris)
+          if (daylight) {
+            // Daylight first: a glow where the headlights end, with the suburb coming up inside it out of focus.
+            // The suburb is never a patch of house pasted on the night street.
+            const [inFrom, inTo, outFrom, outTo] = GLOW_CUE
+            const glow = ease(span(opening, inFrom, inTo)) * (1 - ease(span(opening, outFrom, outTo)))
+            const stops = GLOW_FALLOFF.map(([at, strength]) => `rgba(${DAYLIGHT}, ${(glow * strength).toFixed(3)}) ${at}%`)
+            daylight.style.background = `radial-gradient(circle ${(radius * GLOW_REACH).toFixed(1)}px at ${centre}, ${stops.join(', ')})`
           }
-        } else if (garage > 0) {
-          // Through the garage: the doorway grows to the edges of the stage and takes the house with it.
-          const scaleX = (opening.right - opening.left) / (door.right - door.left)
-          const scaleY = (opening.bottom - opening.top) / (door.bottom - door.top)
-          move = `translate3d(${(opening.left - scaleX * door.left).toFixed(1)}px, ${(opening.top - scaleY * door.top).toFixed(1)}px, 0) scale(${scaleX.toFixed(4)}, ${scaleY.toFixed(4)})`
+        } else {
+          house.style.removeProperty('-webkit-mask-image')
+          house.style.removeProperty('mask-image')
         }
-        house.style.opacity = ease(span(driven, 0, 0.08)).toFixed(3)
-        house.style.filter = grade
-        houseMove.style.transform = move
-        houseCut.style.clipPath = cut
-        setVisible(surrounds, spread > 0)
-        setVisible(haze, daylight > 0)
-        if (haze) haze.style.opacity = daylight.toFixed(3)
+        if (housePhoto) {
+          // The suburb comes into focus as the light clears, and the shot eases back until the whole house is in it.
+          const soft = OPEN_BLUR * (1 - ease(span(opening, ...OPEN_SHARPENS)))
+          housePhoto.style.filter = soft > 0 ? `blur(${(soft * Math.min(w, h)).toFixed(1)}px)` : ''
+          housePhoto.style.transform = `scale(${(1 + soft * BLUR_OVERSCAN + SETTLE_PULL * (1 - houseIn)).toFixed(4)})`
+        }
       }
 
-      // Beat 3: the room splits into five downtown blocks, which later drop back into the city.
+      // The room dissolves in over the house across the whole frame, then splits into five downtown blocks.
       const loansIn = ease(span(split, 0.2, 0.75))
       if (tideLayer) {
-        const shown = garage > 0 && sink < 1
+        const shown = inside > 0 && sink < 1
         setVisible(tideLayer, shown)
-        if (shown && garage < 1) {
-          // The door rolls up from the threshold, so the room shows from the floor first.
-          const lifted = ease(span(garage, 0, 0.3))
-          const top = Math.max(0, lerp(opening.bottom, opening.top, lifted))
-          tideLayer.style.clipPath = `inset(${top.toFixed(1)}px ${Math.max(0, w - opening.right).toFixed(1)}px ${Math.max(0, h - opening.bottom).toFixed(1)}px ${Math.max(0, opening.left).toFixed(1)}px)`
-        } else if (shown && split <= 0) {
+        tideLayer.style.opacity = (split > 0 ? 1 : inside).toFixed(3)
+        if (shown && split <= 0) {
           tideLayer.style.clipPath = 'none'
         } else if (shown) {
           const columns = layout.towers.map((tower, index) => {
@@ -666,22 +529,15 @@ function Stage({ beat, children }: StageProps) {
       }
       if (loansVideo) loansVideo.style.opacity = loansIn.toFixed(3)
       setVisible(refinanceVideo, loansIn < 1)
-      if (refinanceVideo) {
-        if (garage > 0 && garage < 1) {
-          // The room is fitted to the doorway, so it is inside the garage until the doorway is the whole stage.
-          const fit = Math.max((opening.right - opening.left) / w, (opening.bottom - opening.top) / h)
-          const shiftX = (opening.left + opening.right - w) / 2
-          const shiftY = (opening.top + opening.bottom - h) / 2
-          refinanceVideo.style.transform = `translate3d(${shiftX.toFixed(1)}px, ${shiftY.toFixed(1)}px, 0) scale(${fit.toFixed(4)})`
-        } else {
-          refinanceVideo.style.transform = ''
-        }
-      }
+      if (refinanceVideo) refinanceVideo.style.transform = ''
       BEATS.forEach((name) => {
         const [inFrom, inTo, outFrom, outTo] = COPY_CUES[name]
         const arrived = ease(span(x, inFrom, inTo))
         const left = ease(span(x, outFrom, outTo))
         fade(copyRefs.current[name] ?? null, arrived * (1 - left), (1 - arrived - left) * COPY_LIFT)
+        // The fade under the type comes and goes with it, but stays on the bottom edge.
+        const shade = shadeRefs.current[name]
+        if (shade) shade.style.opacity = (arrived * (1 - left)).toFixed(3)
       })
 
       towerRefs.current.forEach((link, index) => {
@@ -734,7 +590,7 @@ function Stage({ beat, children }: StageProps) {
         following = onStreet && flying
         setPlaying(skylineVideo, flying && !cityCovered)
         // Clips start a little before they are seen so the first frame is ready.
-        setPlaying(refinanceVideo, x > AT.garage[0] - 0.3 && loansIn < 1)
+        setPlaying(refinanceVideo, x > AT.inside[0] - 0.3 && loansIn < 1)
         setPlaying(loansVideo, x > SETTLED.refinance - 0.15 && sink < 1)
       }
     }
@@ -832,6 +688,9 @@ function Stage({ beat, children }: StageProps) {
   const copyRef = (name: Beat) => (element: HTMLDivElement | null) => {
     copyRefs.current[name] = element
   }
+  const shadeRef = (name: Beat) => (element: HTMLDivElement | null) => {
+    shadeRefs.current[name] = element
+  }
 
   return (
     <div
@@ -865,26 +724,19 @@ function Stage({ beat, children }: StageProps) {
       ) : null}
 
       {has('purchase') ? (
-        <div
-          ref={houseRef}
-          className="pointer-events-none absolute inset-0"
-          role="img"
-          aria-label="A two-story suburban house with a stone front porch, a double garage, a driveway and a front lawn"
-        >
-          {/* This layer carries the size and the place. The innermost one carries the cutout. */}
-          <div ref={houseMoveRef} className="absolute inset-0">
-            {/* The photo's sky, lawn and driveway carried on past its edges, out of focus. The night street gives way to this first. */}
-            {beat ? null : <img ref={hazeRef} className={`${WIDE} story-haze`} src={MEDIA.purchaseHaze} alt="" aria-hidden="true" />}
-            {/* The rest of the photo: the lawn, driveway, neighbours and sky that spread out around the building as it arrives. */}
-            {beat ? null : (
-              <img ref={surroundsRef} className={`${WIDE} story-daylight`} src={MEDIA.purchase} alt="" aria-hidden="true" />
-            )}
-            <div ref={houseCutRef} className="absolute inset-0">
-              <img ref={housePhotoRef} className={WIDE} src={MEDIA.purchase} alt="" aria-hidden="true" />
-            </div>
-          </div>
+        // The suburb, whole: the house, its lawn and driveway, the neighbours and the sky. This layer carries the opening.
+        <div ref={houseRef} className="pointer-events-none absolute inset-0">
+          <img
+            ref={housePhotoRef}
+            // A tall screen keeps the porch, the middle gable and the upstairs window. A wide one keeps the roof peak.
+            className={`${VIDEO} object-[54%_24%]`}
+            src={MEDIA.purchase}
+            alt="A two-story suburban house with a stone front porch, a front lawn and a driveway, with neighbouring houses on both sides"
+          />
         </div>
       ) : null}
+      {/* The daylight that spills out of the end of the street while the suburb opens. */}
+      {beat ? null : <div ref={daylightRef} className="pointer-events-none absolute inset-0" aria-hidden="true" />}
 
       {has('refinance') || has('loans') ? (
         <div ref={tideRef} className="absolute inset-0">
@@ -916,53 +768,51 @@ function Stage({ beat, children }: StageProps) {
         </div>
       ) : null}
 
+      {/* The house and the room are laid out the way the hero is: the picture whole, a short fade, type along the bottom. */}
       {has('purchase') ? (
-        // Down on the lawn and the driveway, so the roof, the porch and the garage door stay in view.
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 px-6 pb-6 md:px-12 md:pb-12 lg:px-16 lg:pb-16">
-          <div
-            ref={copyRef('purchase')}
-            data-at={SETTLED.purchase}
-            className="story-card pointer-events-auto max-w-lg rounded-[28px] p-5 md:p-9"
-          >
-            <BeatCopy
-              beat="purchase"
-              title="Buy a home."
-              accent="Start with the qualifier."
-              body="Shop purchase options and use the home purchase qualifier to see what you qualify for."
-            >
-              <a href={site.purchaseQualifier} className={PRIMARY}>
-                Purchase qualifier
-              </a>
-              <Link to="/purchase" className={SECONDARY}>
-                More on buying →
-              </Link>
-            </BeatCopy>
+        <>
+          <div ref={shadeRef('purchase')} className={SHADE} aria-hidden="true" />
+          <div className={COPY_FOOT}>
+            <div ref={copyRef('purchase')} data-at={SETTLED.purchase} className="pointer-events-auto">
+              <HeroCopy
+                beat="purchase"
+                title="Buy a home."
+                accent="Start with the qualifier."
+                body="Shop purchase options and use the home purchase qualifier to see what you qualify for."
+              >
+                <a href={site.purchaseQualifier} className={PRIMARY}>
+                  Purchase qualifier
+                </a>
+                <Link to="/purchase" className={OUTLINE}>
+                  More on buying
+                </Link>
+              </HeroCopy>
+            </div>
           </div>
-        </div>
+        </>
       ) : null}
 
       {has('refinance') ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 px-6 pb-8 md:px-12 md:pb-12 lg:px-16 lg:pb-16">
-          <div
-            ref={copyRef('refinance')}
-            data-at={SETTLED.refinance}
-            className="story-card pointer-events-auto max-w-lg rounded-[28px] p-7 md:p-9"
-          >
-            <BeatCopy
-              beat="refinance"
-              title="Refinance"
-              accent="the home you have."
-              body="Check whether a refinance fits, then review the numbers with the refinance rate checker."
-            >
-              <a href={site.refinanceChecker} className={PRIMARY}>
-                Refinance checker
-              </a>
-              <Link to="/refinance" className={SECONDARY}>
-                More on refinancing →
-              </Link>
-            </BeatCopy>
+        <>
+          <div ref={shadeRef('refinance')} className={SHADE} aria-hidden="true" />
+          <div className={COPY_FOOT}>
+            <div ref={copyRef('refinance')} data-at={SETTLED.refinance} className="pointer-events-auto">
+              <HeroCopy
+                beat="refinance"
+                title="Refinance"
+                accent="the home you have."
+                body="Check whether a refinance fits, then review the numbers with the refinance rate checker."
+              >
+                <a href={site.refinanceChecker} className={PRIMARY}>
+                  Refinance checker
+                </a>
+                <Link to="/refinance" className={OUTLINE}>
+                  More on refinancing
+                </Link>
+              </HeroCopy>
+            </div>
           </div>
-        </div>
+        </>
       ) : null}
 
       {has('loans') ? (
@@ -1114,9 +964,10 @@ function useStaticStory() {
 
 /**
  * The homepage from the hero down to the free tools. The downtown night clip stays pinned while
- * scrolling drops onto its headlight avenue, runs down it to the house at the far end (purchase),
- * goes through the garage into the room (refinance), parts the view into five blocks (loan options),
- * and turns the street lights into the free tools.
+ * scrolling drops onto its headlight avenue and runs down it. The far end of that street opens into
+ * a suburb, which settles on a house (purchase). A room dissolves in over the house (refinance),
+ * the view parts into five blocks (loan options), and the street lights turn into the free tools.
+ * The house and the room carry their copy the way the hero does.
  *
  * With reduced motion, or on a screen too short to pin, each beat is shown settled as its own section.
  */

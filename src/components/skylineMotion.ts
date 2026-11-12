@@ -2,8 +2,6 @@
 
 export type Point = readonly [number, number]
 
-export type HouseBox = { left: number; top: number; size: number }
-
 export type Tower = { x: number; top: number; width: number; bulge: number }
 
 export const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
@@ -108,142 +106,6 @@ export const along = ({ far, near }: Avenue, t: number): Point => [lerp(far[0], 
 
 export const avenueLength = ({ far, near }: Avenue) => Math.hypot(near[0] - far[0], near[1] - far[1])
 
-/** The house silhouette on a unit square: apex, then clockwise around the eaves, feet, and doorway. */
-const HOUSE: readonly Point[] = [
-  [0.5, 0],
-  [1, 0.432],
-  [1, 1],
-  [0.659, 1],
-  [0.659, 0.636],
-  [0.341, 0.636],
-  [0.341, 1],
-  [0, 1],
-  [0, 0.432],
-]
-
-const DOOR_TOP = new Set([4, 5])
-
-/**
- * A tower in the downtown clip, in the same corner order as the house.
- * The roof is flat and the doorway is still shut, so it can fold into the silhouette.
- */
-const TOWER_UNIT: readonly Point[] = [
-  [0.5, 0],
-  [0.84, 0],
-  [0.84, 1],
-  [0.66, 1],
-  [0.66, 1],
-  [0.34, 1],
-  [0.34, 1],
-  [0.16, 1],
-  [0.16, 0],
-]
-
-/** A solid doorway, then the solid house around it. Five corners, no cutout, so the room can fill it. */
-const DOOR_SOLID: readonly Point[] = [
-  [0.5, 0.636],
-  [0.659, 0.636],
-  [0.659, 1],
-  [0.341, 1],
-  [0.341, 0.636],
-]
-
-const HOUSE_SOLID: readonly Point[] = [
-  [0.5, 0],
-  [1, 0.432],
-  [1, 1],
-  [0, 1],
-  [0, 0.432],
-]
-
-const FRAME_SOLID: readonly Point[] = [
-  [0.5, 0],
-  [1, 0],
-  [1, 1],
-  [0, 1],
-  [0, 0],
-]
-
-/**
- * The refinance opening. `within` grows it from the doorway to the house.
- * `beyond` carries that house out to the full frame.
- */
-export function openingPoints(
-  width: number,
-  height: number,
-  box: HouseBox,
-  within: number,
-  beyond: number,
-): Point[] {
-  return HOUSE_SOLID.map(([hx, hy], index) => {
-    const [dx, dy] = DOOR_SOLID[index]
-    const [fx, fy] = FRAME_SOLID[index]
-    const x = lerp(box.left + lerp(dx, hx, within) * box.size, fx * width, beyond)
-    const y = lerp(box.top + lerp(dy, hy, within) * box.size, fy * height, beyond)
-    return [x, y] as Point
-  })
-}
-
-/** The doorway cut out of a fully formed house, in stage pixels. */
-export function doorRect(box: HouseBox) {
-  const [rightX, topY] = HOUSE[4]
-  const [leftX] = HOUSE[5]
-  return {
-    left: box.left + leftX * box.size,
-    top: box.top + topY * box.size,
-    right: box.left + rightX * box.size,
-    bottom: box.top + box.size,
-  }
-}
-
-/**
- * One tower in `box` folding into the house. The doorway opens once the roof has a peak.
- * The city around the box stays where it is; only this building changes shape.
- */
-export function risingHousePoints(box: HouseBox, t: number): Point[] {
-  const feet = box.top + box.size
-  const door = (1 - HOUSE[4][1]) * box.size * ease(span(t, 0.55, 1))
-  return HOUSE.map(([hx, hy], index) => {
-    const [tx, ty] = TOWER_UNIT[index]
-    const x = box.left + lerp(tx, hx, t) * box.size
-    const y = box.top + lerp(ty, hy, t) * box.size
-    return [x, DOOR_TOP.has(index) ? feet - door : y] as Point
-  })
-}
-
-/** A closed path through the points with each corner rounded off by up to `radius`. */
-export function roundedPath(points: readonly Point[], radius: number) {
-  const count = points.length
-  let d = ''
-  for (let index = 0; index < count; index++) {
-    const corner = points[index]
-    const toward = (other: Point): Point => {
-      const length = Math.hypot(other[0] - corner[0], other[1] - corner[1])
-      if (length === 0) return corner
-      const reach = Math.min(radius, length / 2) / length
-      return [corner[0] + (other[0] - corner[0]) * reach, corner[1] + (other[1] - corner[1]) * reach]
-    }
-    const enter = toward(points[(index + count - 1) % count])
-    const leave = toward(points[(index + 1) % count])
-    d += `${index === 0 ? 'M' : 'L'}${at(enter)}Q${at(corner)} ${at(leave)}`
-  }
-  return `${d}Z`
-}
-
-export function boundsOf(points: readonly Point[]) {
-  let left = Infinity
-  let top = Infinity
-  let right = -Infinity
-  let bottom = -Infinity
-  for (const [x, y] of points) {
-    left = Math.min(left, x)
-    top = Math.min(top, y)
-    right = Math.max(right, x)
-    bottom = Math.max(bottom, y)
-  }
-  return { left, top, width: right - left, height: bottom - top }
-}
-
 const WAVE_STEPS = 28
 const OVERHANG = 24
 
@@ -270,7 +132,7 @@ export function smoothLine(line: readonly Point[]) {
   return `${d}L${at(line[line.length - 1])}`
 }
 
-/** Everything below the river surface, wound clockwise like the house so the two shapes add up. */
+/** Everything below the river surface. */
 export function waterPath(line: readonly Point[], width: number, height: number) {
   return `${smoothLine(line)}L${fmt(width + OVERHANG)} ${fmt(height + OVERHANG)}L${fmt(-OVERHANG)} ${fmt(height + OVERHANG)}Z`
 }
