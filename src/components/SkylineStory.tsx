@@ -153,6 +153,8 @@ const TOWER_LABEL_STAGGER = 0.04
 const LIGHT_STAGGER = 0.035
 const LIGHT_DOT = 12
 const COPY_LIFT = 28
+/** Headlights running up the avenue. Each one is a step behind the last. */
+const STREAKS = [0, 1, 2, 3, 4, 5] as const
 
 const STATIC_QUERY = '(prefers-reduced-motion: reduce), (max-height: 619px)'
 
@@ -220,10 +222,12 @@ type BeatCopyProps = {
   accent: string
   body: string
   children: ReactNode
+  /** A small mark under the headline, drawn in by the scroll. */
+  mark?: ReactNode
 }
 
 /** A beat set the way the hero is: eyebrow, two-line headline, a sentence, two pills, then the licence line. */
-function HeroCopy({ beat, title, accent, body, children }: BeatCopyProps) {
+function HeroCopy({ beat, title, accent, body, children, mark }: BeatCopyProps) {
   return (
     <>
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:items-end lg:gap-16">
@@ -236,6 +240,7 @@ function HeroCopy({ beat, title, accent, body, children }: BeatCopyProps) {
             {title}
             <span className="serif-em block">{accent}</span>
           </h2>
+          {mark}
           <p className="mt-5 max-w-md text-sm leading-relaxed text-white/90 md:text-base">{body}</p>
         </div>
         <div className="flex flex-wrap gap-3">{children}</div>
@@ -294,6 +299,9 @@ function Stage({ beat, children }: StageProps) {
   const copyRefs = useRef<Partial<Record<Beat, HTMLDivElement | null>>>({})
   const shadeRefs = useRef<Partial<Record<Beat, HTMLDivElement | null>>>({})
   const towerRefs = useRef<(HTMLAnchorElement | null)[]>([])
+  const beaconRefs = useRef<(HTMLSpanElement | null)[]>([])
+  const streakRefs = useRef<(HTMLSpanElement | null)[]>([])
+  const markRef = useRef<HTMLSpanElement>(null)
   const pillRefs = useRef<(HTMLDivElement | null)[]>([])
   const lightRefs = useRef<(HTMLSpanElement | null)[]>([])
 
@@ -456,9 +464,21 @@ function Stage({ beat, children }: StageProps) {
           })
           skylineVideo.style.filter = ''
         }
+        const near: Point = [w * 0.5, h * 0.9]
+        const head: Point = [w * 0.49, h * 0.34]
+        const angle = (Math.atan2(head[1] - near[1], head[0] - near[0]) * 180) / Math.PI + 90
+        streakRefs.current.forEach((streak, index) => {
+          if (!streak) return
+          const travel = (drive * 0.8 + index / STREAKS.length) % 1
+          streak.style.opacity = (dive * (1 - opened) * Math.sin(travel * Math.PI)).toFixed(3)
+          streak.style.transform = `translate3d(${lerp(near[0], head[0], travel).toFixed(1)}px, ${lerp(near[1], head[1], travel).toFixed(1)}px, 0) rotate(${angle.toFixed(1)}deg) scaleY(${lerp(1.6, 0.35, travel).toFixed(2)})`
+        })
       } else if (skylineVideo) {
         skylineVideo.style.transform = ''
         skylineVideo.style.filter = ''
+        streakRefs.current.forEach((streak) => {
+          if (streak) streak.style.opacity = '0'
+        })
       }
       setVisible(avenueStill, taken > 0)
       setVisible(skylineVideo, taken < 1)
@@ -497,6 +517,10 @@ function Stage({ beat, children }: StageProps) {
           housePhoto.style.transform = `scale(${(1 + soft * BLUR_OVERSCAN + SETTLE_PULL * (1 - houseIn)).toFixed(4)})`
         }
       }
+      if (markRef.current) {
+        markRef.current.style.transform = `scaleX(${houseIn.toFixed(3)})`
+        markRef.current.style.opacity = (houseIn * (1 - inside)).toFixed(3)
+      }
 
       // The room dissolves in over the house across the whole frame, then splits into five downtown blocks.
       const loansIn = ease(span(split, 0.2, 0.75))
@@ -529,7 +553,10 @@ function Stage({ beat, children }: StageProps) {
       }
       if (loansVideo) loansVideo.style.opacity = loansIn.toFixed(3)
       setVisible(refinanceVideo, loansIn < 1)
-      if (refinanceVideo) refinanceVideo.style.transform = ''
+      if (refinanceVideo) {
+        // The room comes forward to meet you. It is the whole frame, not a door.
+        refinanceVideo.style.transform = inside < 1 ? `scale(${lerp(1.08, 1, inside).toFixed(4)})` : ''
+      }
       BEATS.forEach((name) => {
         const [inFrom, inTo, outFrom, outTo] = COPY_CUES[name]
         const arrived = ease(span(x, inFrom, inTo))
@@ -544,6 +571,11 @@ function Stage({ beat, children }: StageProps) {
         const delay = index * TOWER_LABEL_STAGGER
         const arrived = ease(span(x, AT.towerLabels[0] + delay, AT.towerLabels[1] + delay))
         fade(link, arrived * (1 - ease(span(x, ...AT.towerLabelsOut))), (1 - arrived) * COPY_LIFT)
+        const beacon = beaconRefs.current[index]
+        if (beacon) {
+          const lit = ease(span(split, TOWER_DELAYS[index], TOWER_DELAYS[index] + 0.45))
+          beacon.style.opacity = (lit * (1 - sink)).toFixed(3)
+        }
       })
 
       // Beat 4: eight lights come on along the streets at the bottom, then each opens into a tool.
@@ -566,7 +598,9 @@ function Stage({ beat, children }: StageProps) {
             : `inset(${(((spot.h - LIGHT_DOT) / 2) * (1 - open)).toFixed(1)}px ${(((spot.w - LIGHT_DOT) / 2) * (1 - open)).toFixed(1)}px round 999px)`
         pill.style.setProperty('--core', (1 - ease(span(open, 0.1, 0.8))).toFixed(3))
         pill.style.setProperty('--label', ease(span(open, 0.55, 1)).toFixed(3))
-        light.style.transform = `${shift} scale(${lerp(0.4, 1, lit).toFixed(3)})`
+        const pop = lit < 1 ? 1 + 0.4 * Math.sin(lit * Math.PI) : 1
+        light.style.transform = `${shift} scale(${(lerp(0.4, 1, lit) * pop).toFixed(3)})`
+        light.style.setProperty('--streak', `${lerp(16, 96, lit).toFixed(0)}px`)
         light.style.opacity = (lit * (1 - ease(span(open, 0.35, 1)))).toFixed(3)
       })
 
@@ -723,6 +757,20 @@ function Stage({ beat, children }: StageProps) {
         </div>
       ) : null}
 
+      {beat ? null : (
+        <div className="pointer-events-none absolute inset-0 z-10" aria-hidden="true">
+          {STREAKS.map((index) => (
+            <span
+              key={index}
+              ref={(element) => {
+                streakRefs.current[index] = element
+              }}
+              className="street-streak"
+            />
+          ))}
+        </div>
+      )}
+
       {has('purchase') ? (
         // The suburb, whole: the house, its lawn and driveway, the neighbours and the sky. This layer carries the opening.
         <div ref={houseRef} className="pointer-events-none absolute inset-0">
@@ -779,6 +827,7 @@ function Stage({ beat, children }: StageProps) {
                 title="Buy a home."
                 accent="Start with the qualifier."
                 body="Shop purchase options and use the home purchase qualifier to see what you qualify for."
+                mark={<span ref={markRef} className="step-mark" aria-hidden="true" />}
               >
                 <a href={site.purchaseQualifier} className={PRIMARY}>
                   Purchase qualifier
@@ -849,6 +898,13 @@ function Stage({ beat, children }: StageProps) {
                   className="group absolute flex items-end overflow-hidden text-white max-md:justify-center"
                 >
                   <span className="tower-shade" aria-hidden="true" />
+                  <span
+                    ref={(element) => {
+                      beaconRefs.current[index] = element
+                    }}
+                    className="tower-beacon"
+                    aria-hidden="true"
+                  />
                   <span className="relative flex items-center gap-2 max-md:mb-5 max-md:rotate-180 max-md:[writing-mode:vertical-rl] md:w-full md:flex-col md:items-start md:gap-1 md:px-5 md:pb-6">
                     <span className="text-xs font-medium text-brand">0{index + 1}</span>
                     <span className="text-sm font-medium md:text-lg lg:text-xl">{loan.label}</span>
