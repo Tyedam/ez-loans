@@ -57,7 +57,20 @@ const AT = {
 const END = 6.85
 
 /** Where each beat sits still. Reduced motion and short screens show these and nothing in between. */
-const SETTLED: Record<Beat, number> = { purchase: 1.9, refinance: 3.45, loans: 5, tools: 6.65 }
+const SETTLED: Record<Beat, number> = { purchase: 2.08, refinance: 3.45, loans: 5, tools: 6.65 }
+
+/** The house silhouette squares off into the frame in this corner order. */
+const FRAME_CORNERS: readonly Point[] = [
+  [0.5, 0],
+  [1, 0],
+  [1, 1],
+  [0.82, 1],
+  [0.66, 1],
+  [0.34, 1],
+  [0.18, 1],
+  [0, 1],
+  [0, 0],
+]
 
 /** Fade in from, fade in to, fade out from, fade out to. */
 type Cue = readonly [number, number, number, number]
@@ -269,9 +282,18 @@ function Stage({ beat, children }: StageProps) {
         hero.style.setProperty('--hero-shift', `${(-Math.min(x, AT.heroOut[1]) * h * 0.7).toFixed(1)}px`)
       }
 
-      // Beat 1: one tower folds into a house. The rest of the downtown clip stays up.
-      const corners = risingHousePoints(layout.house, morph)
-      const radius = Math.max(10, morph * layout.house.size * 0.04)
+      // Beat 1: one tower folds into a house, then that house grows until the facade fills the frame.
+      const fill = ease(span(x, 1.5, 2.05))
+      const coverSize = Math.max(w, h)
+      const liveBox: HouseBox = {
+        left: lerp(layout.house.left, (w - coverSize) / 2, fill),
+        top: lerp(layout.house.top, (h - coverSize) / 2, fill),
+        size: lerp(layout.house.size, coverSize, fill),
+      }
+      const doorOpen = fill > 0 ? 1 - fill : ease(span(morph, 0.55, 1))
+      const corners = risingHousePoints(liveBox, morph, doorOpen)
+      const release = ease(span(fill, 0.62, 1))
+      const radius = Math.max(10, morph * layout.house.size * 0.04) * (1 - release)
       const houseStands = morph > 0 && tide < 0.96
       // The exterior leaves as the room fills the doorway, so the two pictures do not stack.
       const entered = ease(span(tide, 0, 0.28))
@@ -280,19 +302,19 @@ function Stage({ beat, children }: StageProps) {
       const step = ease(tide)
       const within = ease(span(step, 0, 0.38))
       const beyond = ease(span(step, 0.34, 1))
-      const open = entering ? openingPoints(w, h, layout.house, within, beyond) : []
+      const open = entering ? openingPoints(w, h, liveBox, within, beyond) : []
       const openPath = entering ? roundedPath(open, layout.house.size * 0.035 * (1 - beyond)) : ''
 
       if (skyline) {
         // Hide the city only while the room fills the screen. It comes back between the loan towers.
-        const covered = tide >= 1 && split <= 0
+        const covered = (fill > 0.9 || tide >= 1) && split <= 0
         setVisible(skyline, !covered)
         skyline.style.clipPath = 'none'
       }
 
       if (glow) {
         const center = boundsOf(corners)
-        glow.style.opacity = (morph * (1 - ease(span(tide, 0.2, 0.8)))).toFixed(3)
+        glow.style.opacity = (morph * (1 - fill) * (1 - ease(span(tide, 0.2, 0.8)))).toFixed(3)
         glow.style.setProperty('--glow-x', `${(center.left + center.width / 2).toFixed(0)}px`)
         glow.style.setProperty('--glow-y', `${(center.top + center.height / 2).toFixed(0)}px`)
       }
@@ -301,7 +323,8 @@ function Stage({ beat, children }: StageProps) {
         // The stroke stays on the house until the room reaches it, then follows the room out to the frame.
         const followRoom = within > 0.9 && openPath !== ''
         const shown = (morph > 0.02 && tide < 0.96 && !followRoom) || (followRoom && beyond < 0.92)
-        outline.style.opacity = shown ? (1 - ease(span(beyond, 0.45, 0.92))).toFixed(3) : '0'
+        const fillFade = 1 - ease(span(fill, 0.4, 0.82))
+        outline.style.opacity = shown ? ((1 - ease(span(beyond, 0.45, 0.92))) * fillFade).toFixed(3) : '0'
         const d = followRoom ? openPath : shape
         if (shown && d) outlinePaths.forEach((path) => path.setAttribute('d', d))
       }
@@ -312,13 +335,17 @@ function Stage({ beat, children }: StageProps) {
         setVisible(house, shown)
         if (shown) {
           // The clip is fitted to this building so the home stays framed as the roof folds in.
-          const box = boundsOf(corners)
-          const local = corners.map(([px, py]): Point => [px - box.left, py - box.top])
-          house.style.left = `${box.left.toFixed(1)}px`
-          house.style.top = `${box.top.toFixed(1)}px`
-          house.style.width = `${box.width.toFixed(1)}px`
-          house.style.height = `${box.height.toFixed(1)}px`
-          house.style.clipPath = `path("${roundedPath(local, radius)}")`
+          const local = corners.map(([px, py], index): Point => {
+            const [rx, ry] = FRAME_CORNERS[index] ?? FRAME_CORNERS[0]
+            const u = lerp((px - liveBox.left) / liveBox.size, rx, release)
+            const v = lerp((py - liveBox.top) / liveBox.size, ry, release)
+            return [u * liveBox.size, v * liveBox.size]
+          })
+          house.style.left = `${liveBox.left.toFixed(1)}px`
+          house.style.top = `${liveBox.top.toFixed(1)}px`
+          house.style.width = `${liveBox.size.toFixed(1)}px`
+          house.style.height = `${liveBox.size.toFixed(1)}px`
+          house.style.clipPath = release > 0.98 ? 'none' : `path("${roundedPath(local, radius)}")`
           house.style.opacity = (inside * (1 - entered)).toFixed(3)
         }
       }
@@ -326,7 +353,7 @@ function Stage({ beat, children }: StageProps) {
       // Beat 2: the interior opens in the doorway and grows until you are standing in the room.
       // Beat 3: that frame splits into five downtown blocks, which later drop back into the city.
       const loansIn = ease(span(split, 0.2, 0.75))
-      const door = doorRect(layout.house)
+      const door = doorRect(liveBox)
       if (tideLayer) {
         const shown = tide > 0 && sink < 1
         setVisible(tideLayer, shown)
@@ -563,8 +590,8 @@ function Stage({ beat, children }: StageProps) {
         >
           <video
             ref={purchaseVideoRef}
-            className={VIDEO}
-            style={{ objectPosition: 'center 34%' }}
+            className="absolute max-w-none object-cover"
+            style={{ width: '373.333%', height: '210%', left: '-180.4%', top: '-13.2%' }}
             src={CLIPS.purchase}
             loop
             muted
@@ -805,7 +832,7 @@ function useStaticStory() {
 
 /**
  * The homepage from the hero down to the free tools. The downtown night clip stays pinned while
- * scrolling folds one tower into a house (purchase), walks through its door into the room (refinance),
+ * scrolling folds one tower into a house, grows that house until it fills the frame (purchase), walks through its door into the room (refinance),
  * parts the view into five blocks (loan options), and turns the street lights into the free tools.
  *
  * With reduced motion, or on a screen too short to pin, each beat is shown settled as its own section.

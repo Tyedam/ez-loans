@@ -120,9 +120,9 @@ export function doorRect(box: HouseBox) {
  * One tower in `box` folding into the house. The doorway opens once the roof has a peak.
  * The city around the box stays where it is; only this building changes shape.
  */
-export function risingHousePoints(box: HouseBox, t: number): Point[] {
+export function risingHousePoints(box: HouseBox, t: number, doorOpen = ease(span(t, 0.55, 1))): Point[] {
   const feet = box.top + box.size
-  const door = (1 - HOUSE[4][1]) * box.size * ease(span(t, 0.55, 1))
+  const door = (1 - HOUSE[4][1]) * box.size * doorOpen
   return HOUSE.map(([hx, hy], index) => {
     const [tx, ty] = TOWER_UNIT[index]
     const x = box.left + lerp(tx, hx, t) * box.size
