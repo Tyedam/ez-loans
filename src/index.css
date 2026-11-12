@@ -78,6 +78,22 @@ body {
   );
 }
 
+/*
+ * The daylight around the house as it arrives at the end of the street. All four edges are feathered
+ * by --feather, which SkylineStory.tsx brings to zero as the frame reaches the edges of the stage.
+ */
+.story-daylight {
+  --feather: 50%;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--feather), #000 calc(100% - var(--feather)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--feather), #000 calc(100% - var(--feather)), transparent);
+  mask-image:
+    linear-gradient(to right, transparent, #000 var(--feather), #000 calc(100% - var(--feather)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--feather), #000 calc(100% - var(--feather)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
 /* A dark panel for copy over the bright refinance clip. Local to the type, not a scrim on the clip. */
 .story-card {
   background: rgba(22, 22, 22, 0.78);

@@ -20,12 +20,58 @@ const fmt = (n: number) => n.toFixed(1)
 const at = ([x, y]: Point) => `${fmt(x)} ${fmt(y)}`
 
 /** The downtown night clip is 1920x1088. The shore sits near the bottom of the frame. */
-const SKYLINE = { width: 1920, height: 1088, waterline: 0.8 }
+export const SKYLINE = { width: 1920, height: 1088, waterline: 0.8 }
 
 /** Where the clip's waterline lands in a stage that shows it with object-fit: cover. */
 export function waterlineY(width: number, height: number) {
   const shownHeight = SKYLINE.height * Math.max(width / SKYLINE.width, height / SKYLINE.height)
   return height / 2 + (SKYLINE.waterline - 0.5) * shownHeight
+}
+
+/** How object-fit: cover lays a clip into the stage. A clip pixel lands at left/top + pixel * scale. */
+export type Fit = { scale: number; left: number; top: number }
+
+/** `alignX` and `alignY` are the object-position, as fractions. */
+export function coverFit(
+  width: number,
+  height: number,
+  clipWidth: number,
+  clipHeight: number,
+  alignX = 0.5,
+  alignY = 0.5,
+): Fit {
+  const scale = Math.max(width / clipWidth, height / clipHeight)
+  return { scale, left: (width - clipWidth * scale) * alignX, top: (height - clipHeight * scale) * alignY }
+}
+
+/**
+ * The headlight avenue that runs away from the camera between the towers, left of centre in the
+ * downtown clip. It is the vertical canyon of lights, not the intersection down by the trees.
+ * `far` is up the avenue where the headlights disappear between the towers, and `near` is where
+ * that avenue meets the shore road. The drone drifts, so both are given in clip pixels once a second.
+ */
+const AVENUE: readonly { far: Point; near: Point }[] = [
+  { far: [636, 600], near: [640, 830] },
+  { far: [628, 580], near: [631, 845] },
+  { far: [620, 560], near: [622, 860] },
+  { far: [596, 545], near: [598, 875] },
+  { far: [572, 530], near: [575, 890] },
+  { far: [556, 515], near: [560, 900] },
+  { far: [540, 500], near: [545, 910] },
+  { far: [524, 485], near: [530, 925] },
+  { far: [508, 470], near: [515, 940] },
+]
+
+/** Both ends of the avenue at `seconds` into the downtown clip. */
+export function avenueAt(seconds: number): { far: Point; near: Point } {
+  const clock = Math.min(Math.max(seconds, 0), AVENUE.length - 1)
+  const from = AVENUE[Math.floor(clock)]
+  const to = AVENUE[Math.ceil(clock)]
+  const t = clock - Math.floor(clock)
+  return {
+    far: [lerp(from.far[0], to.far[0], t), lerp(from.far[1], to.far[1], t)],
+    near: [lerp(from.near[0], to.near[0], t), lerp(from.near[1], to.near[1], t)],
+  }
 }
 
 /** The house silhouette on a unit square: apex, then clockwise around the eaves, feet, and doorway. */
