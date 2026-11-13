@@ -3,15 +3,16 @@ import { Link } from 'react-router-dom'
 import { Hero, HERO_VIDEO } from './Hero'
 import { SiteLink } from './SiteLink'
 import {
-  boundsOf,
   doorRect,
   ease,
   openingPoints,
   lerp,
   roundedPath,
   span,
+  towersPath,
   waterlineY,
   type HouseBox,
+  type Tower,
 } from './skylineMotion'
 import { loanLinks, site, toolLinks } from '../site'
 
@@ -65,6 +66,9 @@ const COPY_CUES: Record<Beat, Cue> = {
   tools: [5.6, 5.95, END, END + 1],
 }
 
+/** The blocks rise at different times, the way this skyline is taller on the left and broken up on the right. */
+const TOWER_DELAYS = [0.06, 0, 0.22, 0.12, 0.28]
+const TOWER_HEIGHTS = [0.58, 0.72, 0.44, 0.63, 0.36]
 const TOWER_LABEL_STAGGER = 0.04
 const LIGHT_STAGGER = 0.035
 const LIGHT_DOT = 12
@@ -83,6 +87,7 @@ type Layout = {
   river: number
   band: number
   house: HouseBox
+  towers: Tower[]
   pills: { cx: number; cy: number; w: number; h: number }[]
 }
 
@@ -206,18 +211,22 @@ function Stage({ beat, children }: StageProps) {
       const size = wide ? Math.min(h * 0.48, w * 0.32) : Math.min(h * 0.34, w * 0.72)
       const houseBox = { left: w * (wide ? 0.68 : 0.5) - size / 2, top: band - h * 0.03 - size, size }
 
-      const count = loanLinks.length
-      const cardGap = wide ? 14 : 8
-      const cardMargin = wide ? 64 : 16
-      const cardW = (w - cardMargin * 2 - cardGap * (count - 1)) / count
-      const cardH = wide ? 132 : 112
-      const rowTop = h - cardH - (wide ? 40 : 16)
+      const margin = wide ? 64 : w >= 768 ? 48 : 16
+      const gap = Math.min(22, Math.max(6, w * 0.014))
+      const width = (w - margin * 2 - gap * 4) / TOWER_HEIGHTS.length
+      const towers = TOWER_HEIGHTS.map((height, index) => ({
+        x: margin + index * (width + gap),
+        top: h * (1 - height),
+        width,
+        bulge: width * 0.07,
+      }))
       towerRefs.current.forEach((link, index) => {
-        if (!link) return
-        link.style.left = `${(cardMargin + index * (cardW + cardGap)).toFixed(1)}px`
-        link.style.top = `${rowTop.toFixed(1)}px`
-        link.style.width = `${cardW.toFixed(1)}px`
-        link.style.height = `${cardH.toFixed(1)}px`
+        const tower = towers[index]
+        if (!link || !tower) return
+        link.style.left = `${tower.x}px`
+        link.style.top = `${tower.top}px`
+        link.style.width = `${tower.width}px`
+        link.style.height = `${h - tower.top}px`
       })
 
       // The tools float on the river, centred between the waterline and the bottom edge.
@@ -236,7 +245,7 @@ function Stage({ beat, children }: StageProps) {
         })
       }
 
-      return { w, h, river, band, house: houseBox, pills }
+      return { w, h, river, band, house: houseBox, towers, pills }
     }
 
     let layout = measure()
@@ -273,18 +282,13 @@ function Stage({ beat, children }: StageProps) {
       const openPath = entering ? roundedPath(open, porch.size * 0.08 * (1 - beyond)) : ''
 
       if (skyline) {
-        // Hide the city once the house covers it. It comes back for the loan options.
+        // Hide the city once the house covers it. It comes back between the loan towers.
         const covered = (openHouse > 0.92 || tide >= 1) && split <= 0
         setVisible(skyline, !covered)
         skyline.style.clipPath = 'none'
       }
 
-      if (glow) {
-        const center = boundsOf(houseOpen)
-        glow.style.opacity = ((1 - openHouse) * (1 - ease(span(tide, 0.2, 0.8)))).toFixed(3)
-        glow.style.setProperty('--glow-x', `${(center.left + center.width / 2).toFixed(0)}px`)
-        glow.style.setProperty('--glow-y', `${(center.top + center.height / 2).toFixed(0)}px`)
-      }
+      if (glow) glow.style.opacity = '0'
 
       if (outline) {
         // The stroke follows the opening, then leaves once the picture is the whole frame.
@@ -339,13 +343,33 @@ function Stage({ beat, children }: StageProps) {
           tideLayer.style.clipPath = 'none'
           tideLayer.style.opacity = '1'
         } else if (shown) {
-          // The room leaves. The city behind it is the loan step, not sliced pictures.
-          const leave = ease(span(split, 0.05, 0.55))
-          tideLayer.style.clipPath = 'none'
-          tideLayer.style.opacity = (1 - leave).toFixed(3)
+          const columns = layout.towers.map((tower, index) => {
+            const formed = ease(span(split, TOWER_DELAYS[index], TOWER_DELAYS[index] + 0.7))
+            const slice = w / layout.towers.length
+            return {
+              // Slices start a hair wide so no seam shows between them before they part.
+              x: lerp(index * slice - 0.5, tower.x, formed),
+              width: lerp(slice + 1, tower.width, formed),
+              top: lerp(-2, lerp(tower.top, h + 8, sink), formed),
+              bulge: tower.bulge * formed * (1 - sink),
+            }
+          })
+          tideLayer.style.clipPath = `path("${towersPath(columns, h)}")`
+          tideLayer.style.opacity = '1'
+          if (loansVideo) {
+            // Cover the columns without stretching the picture. bottom:auto so the height is the one we set.
+            const roof = Math.max(0, Math.min(...columns.map((column) => column.top)))
+            loansVideo.style.left = '0px'
+            loansVideo.style.right = 'auto'
+            loansVideo.style.bottom = 'auto'
+            loansVideo.style.width = '100%'
+            loansVideo.style.top = `${roof.toFixed(1)}px`
+            loansVideo.style.height = `${Math.max(0, h - roof).toFixed(1)}px`
+            loansVideo.style.objectFit = 'cover'
+          }
         }
       }
-      if (loansVideo) loansVideo.style.opacity = '0'
+      if (loansVideo) loansVideo.style.opacity = loansIn.toFixed(3)
       setVisible(refinanceVideo, loansIn < 1)
       if (refinanceVideo) {
         if (tide > 0 && tide < 1) {
@@ -581,6 +605,19 @@ function Stage({ beat, children }: StageProps) {
               aria-label="A bright open living room with wood floors and a staircase"
             />
           ) : null}
+          {has('loans') ? (
+            <video
+              ref={loansVideoRef}
+              className={VIDEO}
+              src={CLIPS.loans}
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              style={{ objectPosition: '68% 58%' }}
+              aria-label="A modern house with a patio and glass doors"
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -659,12 +696,15 @@ function Stage({ beat, children }: StageProps) {
                     towerRefs.current[index] = element
                   }}
                   to={loan.href}
-                  className="story-card group absolute flex flex-col justify-end rounded-2xl p-4 text-white md:p-5"
+                  className="group absolute flex items-end overflow-hidden text-white max-md:justify-center"
                 >
-                  <span className="text-xs font-medium text-brand">0{index + 1}</span>
-                  <span className="mt-1 text-sm font-medium md:text-lg">{loan.label}</span>
-                  <span className="mt-2 text-sm text-white/75 transition-transform group-hover:translate-x-1">
-                    View loan →
+                  <span className="tower-shade" aria-hidden="true" />
+                  <span className="relative flex items-center gap-2 max-md:mb-5 max-md:rotate-180 max-md:[writing-mode:vertical-rl] md:w-full md:flex-col md:items-start md:gap-1 md:px-5 md:pb-6">
+                    <span className="text-xs font-medium text-brand">0{index + 1}</span>
+                    <span className="text-sm font-medium md:text-lg lg:text-xl">{loan.label}</span>
+                    <span className="hidden text-sm text-white/75 transition-transform group-hover:translate-x-1 md:inline">
+                      View loan →
+                    </span>
                   </span>
                 </Link>
               </li>
